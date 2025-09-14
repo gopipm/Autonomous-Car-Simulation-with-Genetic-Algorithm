@@ -32,7 +32,7 @@ class NeuralNetwork {
    * @returns {Promise<void>} A promise that resolves when the model is saved
    */
   async save() {
-    await this.model.save('downloads://my-model');
+    await this.model.save('downloads://my-model', { includeOptimizer: false });
     console.log("Model saved successfully");
   }
 

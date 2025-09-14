@@ -1,23 +1,61 @@
 /**
  * Calculate the next generation of cars using genetic algorithm
  * This function evolves the population by selecting the fittest individuals
- * and creating offspring through mutation
+ * and creating offspring through mutation, including elitism.
  */
-function nextGeneration() {
+async function nextGeneration() { // Make nextGeneration async
   console.log('Generating next generation');
-  calculateFitness();
   
-  // Create new generation
-  for (let i = 0; i < TOTAL; i++) {
-    agents[i] = pickOne();
+  let brainToPersist = null; // Variable to hold the brain of the best agent from the *previous* generation
+
+  // Only calculate fitness if there are saved agents to evaluate
+  if (savedagents.length > 0) {
+    calculateFitness();
+    // Sort savedagents by fitness in descending order
+    savedagents.sort((a, b) => b.fitness - a.fitness);
+    // Get a copy of the best brain *before* disposing the original agents
+    brainToPersist = savedagents[0].brain.copy(); 
   }
-  
-  // Dispose of old generation to free memory
+
+  agents = []; // Clear current agents
+
+  // Determine how many elites we can actually carry over
+  const actualElites = Math.min(ELITISM_COUNT, savedagents.length);
+
+  // Implement elitism: carry over the top 'actualElites' agents
+  for (let i = 0; i < actualElites; i++) {
+    agents.push(new Particle(savedagents[i].brain));
+  }
+
+  // Create the rest of the new generation
+  // If savedagents is empty, pickOne will fail, so create new random particles
+  if (savedagents.length > 0) {
+    for (let i = actualElites; i < TOTAL; i++) {
+      agents.push(pickOne());
+    }
+  } else {
+    // If no saved agents (e.g., first generation where all died), create all new random particles
+    for (let i = actualElites; i < TOTAL; i++) { // Start from actualElites to fill up to TOTAL
+      agents.push(new Particle());
+    }
+  }
+
+  // Dispose of all saved agents from the previous generation to free memory
   for (let i = 0; i < savedagents.length; i++) {
     savedagents[i].dispose();
   }
   
-  savedagents = [];
+  savedagents = []; // Clear the savedagents array
+
+  generationCount++; // Increment generation count here
+
+  // Save the state after a new generation is created, passing the cloned brain
+  await saveSimulationState(brainToPersist);
+
+  // Dispose of the cloned brain after it has been saved
+  if (brainToPersist) {
+    brainToPersist.dispose();
+  }
 }
 
 /**

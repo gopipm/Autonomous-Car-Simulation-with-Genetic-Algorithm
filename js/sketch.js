@@ -11,6 +11,15 @@ const TOTAL = 100;          // Number of cars in each generation
 const MUTATION_RATE = 0.2;  // Probability of mutation for each weight
 const LIFESPAN = 30;        // Maximum frames a car can live without progress
 const SIGHT = 80;           // Sensor range in pixels
+const ELITISM_COUNT = 1;    // Number of top agents to carry over to the next generation
+
+// Track generation presets for varied layouts
+const TRACK_PRESETS = [
+  { noiseMax: 2, pathWidth: 70 },  // Default: moderately curvy, standard width
+  { noiseMax: 3, pathWidth: 60 },  // More curvy, slightly narrower
+  { noiseMax: 1.5, pathWidth: 80 },// Less curvy, wider
+  { noiseMax: 2.5, pathWidth: 50 } // Moderately curvy, narrow
+];
 
 // Global variables
 let toggle_value = false;   // Toggle for dynamic/static obstacles
@@ -43,6 +52,69 @@ let changeMap = false;      // Flag to trigger track regeneration
 let trackheight = 800;      // Track height
 let trackWidth = 1000;      // Track width
 
+let currentTrackPresetIndex = 0; // Index for cycling through track presets
+let loadedBrain = null; // To store the brain loaded from persistence
+
+/**
+ * Save the current simulation state to local storage and IndexedDB.
+ * @param {NeuralNetwork} [brainToSave=null] - An optional NeuralNetwork instance to save.
+ */
+async function saveSimulationState(brainToSave = null) {
+  console.log("Saving simulation state...");
+  localStorage.setItem('generationCount', generationCount);
+  localStorage.setItem('currentTrackPresetIndex', currentTrackPresetIndex);
+
+  // Use the provided brainToSave, or fall back to bestP's brain if available
+  const brainToUse = brainToSave || (bestP ? bestP.brain : null);
+
+  if (brainToUse && brainToUse.model) {
+    try {
+      await brainToUse.model.save('indexeddb://best-car-model', { includeOptimizer: false });
+      console.log("Best model saved to IndexedDB.");
+    } catch (error) {
+      console.error("Failed to save model to IndexedDB:", error);
+    }
+  } else {
+    console.log("No brain available to save.");
+  }
+}
+
+/**
+ * Load the simulation state from local storage and IndexedDB.
+ * @returns {Promise<void>}
+ */
+async function loadSimulationState() {
+  console.log("Loading simulation state...");
+  const storedGenerationCount = localStorage.getItem('generationCount');
+  if (storedGenerationCount) {
+    generationCount = parseInt(storedGenerationCount, 10);
+    console.log("Loaded generation count:", generationCount);
+  }
+
+  const storedTrackPresetIndex = localStorage.getItem('currentTrackPresetIndex');
+  if (storedTrackPresetIndex) {
+    currentTrackPresetIndex = parseInt(storedTrackPresetIndex, 10);
+    console.log("Loaded track preset index:", currentTrackPresetIndex);
+  }
+
+  try {
+    const model = await tf.loadLayersModel('indexeddb://best-car-model');
+    if (model) {
+      // Explicitly compile the model with a dummy optimizer to satisfy TF.js internal checks.
+      // This is a workaround if TF.js expects an optimizer even for non-training models.
+      model.compile({
+        optimizer: tf.train.adam(), // Use a dummy optimizer
+        loss: 'meanSquaredError'    // Use a dummy loss
+      });
+      loadedBrain = new NeuralNetwork(model, 13, 26, 2);
+      console.log("Loaded best model from IndexedDB.");
+    }
+  } catch (error) {
+    console.log("No saved model found in IndexedDB or failed to load:", error.message);
+    loadedBrain = null; // Ensure it's null if loading fails
+  }
+}
+
 /**
  * Build a procedurally generated track with inner and outer boundaries
  */
@@ -51,12 +123,16 @@ function buildTrack() {
   checkpoints = [];
   inside = [];
   outside = [];
-  let min_dist = Infinity;
-  let noiseMax = 2;
+  
+  // Get current track preset parameters
+  const currentPreset = TRACK_PRESETS[currentTrackPresetIndex];
+  let noiseMax = currentPreset.noiseMax;
+  const pathWidth = currentPreset.pathWidth;
+
+  let min_dist = Infinity; 
   
   // Generate track points using Perlin noise
   const total = 80;
-  const pathWidth = 70;
   let startX = random(10);
   let startY = random(10);
   
@@ -95,7 +171,7 @@ function buildTrack() {
     let index = int(random(5, checkpoints.length - 1));
     let p1 = inside[index];
     let p2 = outside[index];
-    let mid = checkpoints[index].midpoint();
+    // let mid = checkpoints[index].midpoint(); 
     let x = random(p1.x, p2.x);
     let m = (p2.y - p1.y) / (p2.x - p1.x);
     let y = m * (x - p1.x) + p1.y;
@@ -113,23 +189,37 @@ function buildTrack() {
   // Set start and end points
   start = checkpoints[0].midpoint();
   end = checkpoints[checkpoints.length - 1].midpoint();
+
+  // Advance to the next track preset for the next generation
+  currentTrackPresetIndex = (currentTrackPresetIndex + 1) % TRACK_PRESETS.length;
 }
 
 /**
  * Setup function - runs once at the beginning
  */
-function setup() {
+async function setup() { // Make setup async
   createCanvas(1900, 800);
   tf.setBackend('cpu');
-  buildTrack();
+
+  // Create speed control slider FIRST to ensure it's always initialized
+  speedSlider = createSlider(1, 10, 1);
+
+  await loadSimulationState(); // Load state after slider is created
+
+  buildTrack(); // This will use the loaded currentTrackPresetIndex
   
   // Create initial population of agents
   for (let i = 0; i < TOTAL; i++) {
-    agents[i] = new Particle();
+    if (i === 0 && loadedBrain) { // Use loaded brain for the first agent if available
+      agents[i] = new Particle(loadedBrain);
+      // Dispose the loadedBrain after using it to create the first agent
+      // as the Particle constructor makes a copy.
+      loadedBrain.dispose();
+      loadedBrain = null; // Clear reference
+    } else {
+      agents[i] = new Particle();
+    }
   }
-
-  // Create speed control slider
-  speedSlider = createSlider(1, 10, 1);
 }
 
 /**
@@ -160,7 +250,11 @@ async function load_model() {
  * Save the best performing model
  */
 function save_model() {
-  bestP.save();
+  if (bestP) { // Only save if bestP is defined
+    bestP.save();
+  } else {
+    console.warn("No best particle to save yet.");
+  }
 }
 
 /**
@@ -184,7 +278,8 @@ function draw() {
   const cycles = speedSlider.value();
   background(0);
 
-  bestP = agents[0];
+  // Initialize bestP to null or the first agent if available
+  bestP = agents.length > 0 ? agents[0] : null;
 
   // Run simulation for multiple cycles per frame
   for (let n = 0; n < cycles; n++) {
@@ -197,7 +292,7 @@ function draw() {
       agent.show();
 
       // Track best performing agent
-      if (agent.fitness > bestP.fitness) {
+      if (bestP === null || agent.fitness > bestP.fitness) { // Handle initial null bestP
         bestP = agent;
       }
     }
@@ -223,7 +318,6 @@ function draw() {
 
       buildTrack();
       nextGeneration();
-      generationCount++;
       changeMap = false;
     }
 
@@ -231,7 +325,6 @@ function draw() {
     if (agents.length === 0) {
       buildTrack();
       nextGeneration();
-      generationCount++;
     }
   }
 
@@ -258,44 +351,53 @@ function draw() {
     }
   }
 
-  // Highlight best agent
-  bestP.highlight();
+  // Highlight best agent and render its view ONLY if bestP is defined
+  if (bestP) {
+    bestP.highlight();
 
-  // Render 3D-like view from best agent's perspective
-  let data = bestP.renderView(walls, obstacles);
-  let scene = data['scene'];
-  let colors = data['colors'];
-  const w = 900 / scene.length;
-  
-  push();
-  translate(1000, 0);
-  for (let i = 0; i < scene.length; i++) {
+    // Render 3D-like view from best agent's perspective
+    let data = bestP.renderView(walls, obstacles);
+    let scene = data['scene'];
+    let colors = data['colors'];
+    const w = 900 / scene.length;
+    
+    push();
+    translate(1000, 0);
+    for (let i = 0; i < scene.length; i++) {
+      noStroke();
+      let sq = scene[i] * scene[i];
+      let swq = 400 * 400;
+      const b = map(sq, 0, swq, 200, 0);
+      const h = map(sq, 0, swq, 800, 0);
+      
+      if (colors[i] === 1) {
+        // Obstacle color (red)
+        fill(b, 0, 0);
+      }
+      if (colors[i] === 0) {
+        // Wall color (gray/blue)
+        fill(b, b, b + 30, b);
+      }
+      
+      rectMode(CENTER);
+      rect(i * w + w / 2, 400, w + 1, h);
+    }
+    pop();
+
+    // Display UI information
+    fill(255);
+    line(trackWidth, 0, trackWidth, trackheight);
+    textSize(24);
     noStroke();
-    let sq = scene[i] * scene[i];
-    let swq = 400 * 400;
-    const b = map(sq, 0, swq, 200, 0);
-    const h = map(sq, 0, swq, 800, 0);
-    
-    if (colors[i] === 1) {
-      // Obstacle color (red)
-      fill(b, 0, 0);
-    }
-    if (colors[i] === 0) {
-      // Wall color (gray/blue)
-      fill(b, b, b + 30, b);
-    }
-    
-    rectMode(CENTER);
-    rect(i * w + w / 2, 400, w + 1, h);
+    text('Generation: ' + generationCount, 10, 50);
+    text('Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h', 10, 700);
+    text('Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m", 10, 750);
+  } else {
+    // If no agents are alive, display a message or just clear the view
+    fill(255);
+    textSize(24);
+    noStroke();
+    text('Generation: ' + generationCount, 10, 50);
+    text('No active agents. Waiting for next generation...', 10, 700);
   }
-  pop();
-
-  // Display UI information
-  fill(255);
-  line(trackWidth, 0, trackWidth, trackheight);
-  textSize(24);
-  noStroke();
-  text('Generation: ' + generationCount, 10, 50);
-  text('Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h', 10, 700);
-  text('Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m", 10, 750);
 }
