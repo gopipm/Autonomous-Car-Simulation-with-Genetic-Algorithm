@@ -71,6 +71,30 @@ Cars have 13 sensors (rays) spread across a 130-degree field of view to detect:
 - Distance to track boundaries
 - Distance to dynamic obstacles
 
+## Version Control
+
+This project uses Git for version control. To set up version control (already done):
+```bash
+git init
+git add .
+git commit -m "Initial commit: Autonomous car simulation with genetic algorithm and neural networks"
+```
+
+For future development:
+```bash
+# Check status
+git status
+
+# Add changes
+git add .
+
+# Commit changes
+git commit -m "Description of changes"
+
+# View commit history
+git log
+```
+
 ## TODO / Improvements
 
 ### Performance & Training
