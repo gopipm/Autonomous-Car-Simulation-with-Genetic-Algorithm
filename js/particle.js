@@ -1,4 +1,18 @@
 /**
+ * Calculate the perpendicular distance from a point to a line
+ * @param {p5.Vector} p1 - First point of the line
+ * @param {p5.Vector} p2 - Second point of the line
+ * @param {number} x - X coordinate of the point
+ * @param {number} y - Y coordinate of the point
+ * @returns {number} The perpendicular distance
+ */
+function pldistance(p1, p2, x, y) {
+  const num = abs((p2.y - p1.y) * x - (p2.x - p1.x) * y + p2.x * p1.y - p2.y * p1.x);
+  const den = p5.Vector.dist(p1, p2);
+  return num / den;
+}
+
+/**
  * Particle class representing a car in the simulation
  * Each particle has a neural network brain that controls its movement
  */

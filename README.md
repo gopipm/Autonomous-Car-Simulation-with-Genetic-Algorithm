@@ -138,6 +138,10 @@ The project uses the following external libraries:
 - Improved obstacle detection accuracy by properly updating ray positions
 - Fixed ray direction calculation to use proper vector multiplication
 
+### Missing Function Bug Fix
+- Restored accidentally removed `pldistance` function that calculates perpendicular distance from a point to a line
+- This function is critical for checkpoint detection in the particle system
+
 ## Code Improvements
 
 The code has been refactored to improve:
