@@ -132,6 +132,12 @@ The project uses the following external libraries:
 - Updated `loadbinary.js` to work with the new p5.js version
 - Maintained all existing functionality while ensuring compatibility with updated libraries
 
+### Sensor Visualization and Obstacle Detection
+- Fixed ray positioning issue where sensors weren't moving with cars
+- Enabled sensor visualization to show rays detecting obstacles and walls
+- Improved obstacle detection accuracy by properly updating ray positions
+- Fixed ray direction calculation to use proper vector multiplication
+
 ## Code Improvements
 
 The code has been refactored to improve:

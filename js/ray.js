@@ -51,7 +51,7 @@ class Ray {
    */
   checkobstacle(obstacles) {
     let p1 = this.pos;
-    let p2 = p5.Vector.add(this.pos, this.dir.mult(SIGHT));
+    let p2 = p5.Vector.add(this.pos, p5.Vector.mult(this.dir, SIGHT));
     let ob = null;
     let dis = Infinity;
     
@@ -74,7 +74,7 @@ class Ray {
    */
   renderobstacle(obstacles) {
     let p1 = this.pos;
-    let p2 = p5.Vector.add(this.pos, this.dir.mult(1000));
+    let p2 = p5.Vector.add(this.pos, p5.Vector.mult(this.dir, 1000));
     let ob = null;
     let dis = Infinity;
     

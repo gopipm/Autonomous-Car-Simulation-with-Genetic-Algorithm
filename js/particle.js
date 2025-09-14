@@ -1,18 +1,4 @@
 /**
- * Calculate the perpendicular distance from a point to a line
- * @param {p5.Vector} p1 - First point of the line
- * @param {p5.Vector} p2 - Second point of the line
- * @param {number} x - X coordinate of the point
- * @param {number} y - Y coordinate of the point
- * @returns {number} The perpendicular distance
- */
-function pldistance(p1, p2, x, y) {
-  const num = abs((p2.y - p1.y) * x - (p2.x - p1.x) * y + p2.x * p1.y - p2.y * p1.x);
-  const den = p5.Vector.dist(p1, p2);
-  return num / den;
-}
-
-/**
  * Particle class representing a car in the simulation
  * Each particle has a neural network brain that controls its movement
  */
@@ -46,10 +32,10 @@ class Particle {
 
     // Initialize sensors
     for (let a = -65; a < 65; a += 1) {
-      this.view.push(new Ray(this.pos, radians(a)));
+      this.view.push(new Ray(this.pos.copy(), radians(a)));
     }
     for (let a = -65; a < 65; a += 10) {
-      this.rays.push(new Ray(this.pos, radians(a)));
+      this.rays.push(new Ray(this.pos.copy(), radians(a)));
     }
     
     // Initialize brain (neural network)
@@ -106,12 +92,14 @@ class Particle {
         this.dead = true;
       }
 
-      // Rotate sensors to match heading
+      // Update sensor positions and rotate to match heading
       for (let i = 0; i < this.view.length; i++) {
+        this.view[i].pos = this.pos.copy();
         this.view[i].rotate(this.vel.heading());
       }
 
       for (let i = 0; i < this.rays.length; i++) {
+        this.rays[i].pos = this.pos.copy();
         this.rays[i].rotate(this.vel.heading());
       }
     }
@@ -184,10 +172,10 @@ class Particle {
       // Normalize sensor input
       inputs[i] = map(record, 0, SIGHT, 1, 0);
 
-      // Visualize sensor rays (commented out for performance)
+      // Visualize sensor rays
       if (closest) {
-        // stroke(255);
-        // line(this.pos.x, this.pos.y, closest.x, closest.y);
+        stroke(255);
+        line(this.pos.x, this.pos.y, closest.x, closest.y);
       }
     }
     
