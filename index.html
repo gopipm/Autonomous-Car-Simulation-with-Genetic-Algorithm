@@ -16,6 +16,7 @@
         <h1>Autonomous Car Simulation</h1>
         <div class="header-controls">
           <button id="toggle-settings-btn" onclick="toggleSettingsPanel()">Settings</button>
+          <button id="toggle-about-btn" onclick="toggleAboutPanel()">About</button>
           <button id="theme-toggle-btn" onclick="toggleTheme()">Toggle Theme</button>
         </div>
       </header>
@@ -45,6 +46,66 @@
             <button onclick="load_model()">Load</button>
           </div>
         </div>
+      </div>
+
+      <div id="about-panel" class="settings-panel hidden">
+        <h2>About This Simulation</h2>
+        <p>This project simulates autonomous cars learning to navigate a track using neural networks and a genetic algorithm. The cars evolve to avoid walls and dynamic obstacles through evolutionary training, aiming to complete the track efficiently.</p>
+        
+        <h3>Simulation Features:</h3>
+        <ul>
+          <li>Cars with neural network "brains" that control their movement.</li>
+          <li>A procedurally generated racetrack with inner and outer boundaries.</li>
+          <li>Dynamic obstacles that move along the track.</li>
+          <li>Genetic algorithm for evolving better-performing cars over generations.</li>
+          <li>Real-time visualization of car sensors (LiDAR-like rays).</li>
+          <li>3D-like visualization of the car's perspective.</li>
+        </ul>
+
+        <h3>Settings and Options:</h3>
+        <ul>
+          <li><strong>Obstacle Movement:</strong> Toggles whether obstacles move dynamically or remain static.</li>
+          <li><strong>Number of Obstacles:</strong> Allows you to set the quantity of obstacles on the track. Enter a number and click "Set".</li>
+          <li><strong>Simulation Speed:</strong> A slider to control how fast the simulation runs (number of updates per frame).</li>
+          <li><strong>Save Best Model:</strong> Saves the neural network of the best-performing car from the current generation to your local machine.</li>
+          <li><strong>Load Model:</strong> Allows you to upload a previously saved neural network model (both JSON and weights files) to initialize the next generation with a pre-trained brain.</li>
+          <li><strong>Toggle Theme:</strong> Switches between light and dark modes for the UI.</li>
+        </ul>
+
+        <h3>TODO / Improvements:</h3>
+        <ul>
+          <li>Implement elitism to preserve top performers across generations.</li>
+          <li>Add different track layouts for more robust training.</li>
+          <li>Implement curriculum learning with increasing difficulty.</li>
+          <li>Add checkpoint system to resume training from specific generations.</li>
+          <li>Optimize neural network architecture for faster computation.</li>
+          <li>Add multiple car types with different capabilities.</li>
+          <li>Implement weather conditions (rain, fog) affecting sensors.</li>
+          <li>Add different obstacle behaviors (moving in patterns, varying speeds).</li>
+          <li>Create a dashboard to visualize training statistics.</li>
+          <li>Add manual driving mode for collecting training data.</li>
+          <li>Improve visualization of car sensors and decision-making process.</li>
+          <li>Add replay functionality for best performing cars.</li>
+          <li>Implement a proper settings panel instead of scattered controls.</li>
+          <li>Add graph visualization of fitness improvement over generations.</li>
+          <li>Create a start screen with instructions and options.</li>
+          <li>Refactor code into ES6 modules for better organization.</li>
+          <li>Add comprehensive comments and documentation.</li>
+          <li>Implement unit tests for core functions.</li>
+          <li>Optimize raycasting algorithm for better performance.</li>
+          <li>Add error handling and validation for user inputs.</li>
+          <li>Implement reinforcement learning with reward shaping.</li>
+          <li>Add convolutional neural network for visual input processing.</li>
+          <li>Create a multi-agent environment with competitive cars.</li>
+          <li>Add transfer learning capabilities between different tracks.</li>
+          <li>Implement online learning where cars continue to learn during simulation.</li>
+        </ul>
+      </div>
+
+      <div id="simulation-info-bar" class="simulation-info-bar">
+        <span id="generation-info">Generation: 0</span>
+        <span id="speed-info">Speed: 0.00 Km/h</span>
+        <span id="distance-info">Distance from obstacle: 0.000 m</span>
       </div>
 
       <main id="simulation-canvas"></main>

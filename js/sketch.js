@@ -50,7 +50,7 @@ const maxFitness = 500;     // Fitness threshold to trigger new generation
 let changeMap = false;      // Flag to trigger track regeneration
 
 const simulationAreaWidth = 1000; // Width of the main simulation track area
-const viewAreaWidth = 300;        // Width of the 3D-like ray casting view
+const viewAreaWidth = 350;        // Width of the 3D-like ray casting view (increased from 300)
 let trackheight = 800;            // Height of the entire canvas
 
 let currentTrackPresetIndex = 0; // Index for cycling through track presets
@@ -291,7 +291,25 @@ function change_obs_no() {
  */
 function toggleSettingsPanel() {
   const settingsPanel = document.getElementById('settings-panel');
+  const aboutPanel = document.getElementById('about-panel');
   settingsPanel.classList.toggle('hidden');
+  // Ensure about panel is hidden when settings panel is shown
+  if (!settingsPanel.classList.contains('hidden')) {
+    aboutPanel.classList.add('hidden');
+  }
+}
+
+/**
+ * Toggles the visibility of the about panel.
+ */
+function toggleAboutPanel() {
+  const aboutPanel = document.getElementById('about-panel');
+  const settingsPanel = document.getElementById('settings-panel');
+  aboutPanel.classList.toggle('hidden');
+  // Ensure settings panel is hidden when about panel is shown
+  if (!aboutPanel.classList.contains('hidden')) {
+    settingsPanel.classList.add('hidden');
+  }
 }
 
 /**
@@ -299,6 +317,20 @@ function toggleSettingsPanel() {
  */
 function toggleTheme() {
   document.body.classList.toggle('dark-theme');
+}
+
+/**
+ * Updates the simulation information displayed in the HTML info bar.
+ */
+function updateSimulationInfo() {
+  document.getElementById('generation-info').innerText = 'Generation: ' + generationCount;
+  if (bestP) {
+    document.getElementById('speed-info').innerText = 'Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h';
+    document.getElementById('distance-info').innerText = 'Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m";
+  } else {
+    document.getElementById('speed-info').innerText = 'Speed: 0.00 Km/h';
+    document.getElementById('distance-info').innerText = 'Distance from obstacle: 0.000 m';
+  }
 }
 
 
@@ -410,21 +442,8 @@ function draw() {
       rect(i * w + w / 2, trackheight / 2, w + 1, h); // Center rect vertically
     }
     pop();
-
-    // Display UI information
-    fill(255);
-    line(simulationAreaWidth, 0, simulationAreaWidth, trackheight); // Separator line
-    textSize(24);
-    noStroke();
-    text('Generation: ' + generationCount, simulationAreaWidth + 10, 50); // Position relative to simulationAreaWidth
-    text('Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h', simulationAreaWidth + 10, 700);
-    text('Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m", simulationAreaWidth + 10, 750);
-  } else {
-    // If no agents are alive, display a message or just clear the view
-    fill(255);
-    textSize(24);
-    noStroke();
-    text('Generation: ' + generationCount, simulationAreaWidth + 10, 50);
-    text('No active agents. Waiting for next generation...', simulationAreaWidth + 10, 700);
   }
+  
+  // Update HTML info bar
+  updateSimulationInfo();
 }

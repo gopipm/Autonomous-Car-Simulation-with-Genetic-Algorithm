@@ -161,6 +161,30 @@ body.dark-theme .settings-panel h2 {
   margin-left: 10px; /* Indent load model controls */
 }
 
+/* Simulation Info Bar */
+.simulation-info-bar {
+  background-color: #fff;
+  padding: 10px 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #555;
+}
+
+body.dark-theme .simulation-info-bar {
+  background-color: #3a3f47;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  color: #ccc;
+}
+
+.simulation-info-bar span {
+  padding: 0 10px;
+}
+
 /* p5.js Canvas */
 canvas {
   display: block; /* Remove extra space below canvas */
@@ -201,5 +225,10 @@ body.dark-theme canvas {
   }
   .model-load-group {
     margin-left: 0;
+  }
+  .simulation-info-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
   }
 }
