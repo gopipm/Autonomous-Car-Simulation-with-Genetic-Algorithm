@@ -165,12 +165,10 @@ class Particle {
         if (distance < record) {
           closest = ob_point.pos;
           record = distance;
-          if (record < this.closeDistFromOb) {
-            this.closeDistFromOb = record;
-          }
+          this.closeDistFromOb = record;
         }
       }
-      
+
       // Check for walls
       for (let wall of walls) {
         const pt = ray.cast(wall);
