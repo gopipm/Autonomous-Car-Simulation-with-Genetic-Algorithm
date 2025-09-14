@@ -160,10 +160,15 @@ class Particle {
       
       // Check for obstacles
       let ob_point = ray.checkobstacle(obstacles);
-      if (ob_point && record > p5.Vector.dist(this.pos, ob_point.pos)) {
-        closest = ob_point.pos;
-        record = p5.Vector.dist(this.pos, ob_point.pos);
-        this.closeDistFromOb = record;
+      if (ob_point) {
+        let distance = p5.Vector.dist(this.pos, ob_point.pos);
+        if (distance < record) {
+          closest = ob_point.pos;
+          record = distance;
+          if (record < this.closeDistFromOb) {
+            this.closeDistFromOb = record;
+          }
+        }
       }
       
       // Check for walls
@@ -188,7 +193,7 @@ class Particle {
 
       // Visualize sensor rays
       if (closest) {
-        stroke(255);
+        stroke(255, 100, 100);  // Red color for sensor rays
         line(this.pos.x, this.pos.y, closest.x, closest.y);
       }
     }
@@ -246,10 +251,13 @@ class Particle {
       
       // Check for obstacles
       let ob_point = ray.renderobstacle(obstacles);
-      if (ob_point && record > p5.Vector.dist(this.pos, ob_point.pos)) {
-        closest = ob_point.pos;
-        record = p5.Vector.dist(this.pos, ob_point.pos);
-        c = 1;
+      if (ob_point) {
+        let distance = p5.Vector.dist(this.pos, ob_point.pos);
+        if (distance < record) {
+          closest = ob_point.pos;
+          record = distance;
+          c = 1;
+        }
       }
       
       // Check for walls
