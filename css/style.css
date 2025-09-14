@@ -855,6 +855,98 @@ body.dark-theme .fallback-content em {
     color: #b8a572;
 }
 
+/* Chart Loading Error Styles */
+.chart-loading-error {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    margin: 20px;
+}
+
+body.dark-theme .chart-loading-error {
+    background-color: #2d2a1f;
+    border-color: #4a4229;
+}
+
+.chart-loading-error h3 {
+    color: #856404;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+body.dark-theme .chart-loading-error h3 {
+    color: #ffd93d;
+}
+
+.chart-loading-error p {
+    color: #856404;
+    margin-bottom: 15px;
+}
+
+body.dark-theme .chart-loading-error p {
+    color: #e8d5a3;
+}
+
+.chart-loading-error button {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.chart-loading-error button:hover {
+    background-color: #e0a800;
+}
+
+/* Fallback Charts Styles */
+.fallback-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.fallback-chart-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    text-align: center;
+}
+
+body.dark-theme .fallback-chart-section {
+    background-color: #4a4f57;
+    border-color: #555;
+}
+
+.fallback-chart-section h3 {
+    margin: 0 0 15px 0;
+    color: #007bff;
+    font-size: 1.2em;
+}
+
+body.dark-theme .fallback-chart-section h3 {
+    color: #61dafb;
+}
+
+.fallback-chart-section canvas {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin: 0 auto;
+    display: block;
+}
+
+body.dark-theme .fallback-chart-section canvas {
+    background-color: #2d3748;
+    border-color: #555;
+}
+
 /* Speed Slider Styling (p5.dom creates these) */
 .p5js-slider {
     width: 150px;

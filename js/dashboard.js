@@ -1,4 +1,4 @@
-import { TOTAL } from './config.js';
+import { TOTAL } from "./config.js";
 
 /**
  * Training Dashboard for visualizing simulation progress and analytics
@@ -22,6 +22,7 @@ export class TrainingDashboard {
     // Dashboard state
     this.isVisible = false;
     this.maxHistoryLength = 100; // Keep last 100 generations
+    this.fallbackMode = false; // Track if using canvas fallback charts
 
     // Performance tracking
     this.startTime = Date.now();
@@ -140,13 +141,15 @@ export class TrainingDashboard {
     `;
 
     // Insert dashboard into DOM
-    document.querySelector('.container').insertAdjacentHTML('beforeend', dashboardHTML);
+    document
+      .querySelector(".container")
+      .insertAdjacentHTML("beforeend", dashboardHTML);
 
     // Add dashboard toggle button to header
-    const headerControls = document.querySelector('.header-controls');
-    const dashboardBtn = document.createElement('button');
-    dashboardBtn.id = 'toggle-dashboard-btn';
-    dashboardBtn.textContent = 'Analytics';
+    const headerControls = document.querySelector(".header-controls");
+    const dashboardBtn = document.createElement("button");
+    dashboardBtn.id = "toggle-dashboard-btn";
+    dashboardBtn.textContent = "Analytics";
     dashboardBtn.onclick = () => this.toggle();
     headerControls.insertBefore(dashboardBtn, headerControls.firstChild);
   }
@@ -156,8 +159,20 @@ export class TrainingDashboard {
    */
   initializeCharts() {
     // Check if Chart.js is available
-    if (typeof Chart === 'undefined') {
-      console.warn('Chart.js not loaded. Charts will not be available.');
+    if (typeof Chart === "undefined") {
+      console.warn("Chart.js not loaded. Charts will not be available.");
+      this.showChartLoadingError();
+      return;
+    }
+
+    // Additional check for Chart constructor
+    try {
+      if (!Chart || typeof Chart !== "function") {
+        throw new Error("Chart.js constructor not available");
+      }
+    } catch (error) {
+      console.error("Chart.js initialization error:", error);
+      this.showChartLoadingError();
       return;
     }
 
@@ -167,27 +182,32 @@ export class TrainingDashboard {
     Chart.defaults.plugins.legend.display = true;
 
     // Fitness Evolution Chart
-    const fitnessCtx = document.getElementById('fitness-chart')?.getContext('2d');
+    const fitnessCtx = document
+      .getElementById("fitness-chart")
+      ?.getContext("2d");
     if (fitnessCtx) {
       this.fitnessChart = new Chart(fitnessCtx, {
-        type: 'line',
+        type: "line",
         data: {
           labels: [],
-          datasets: [{
-            label: 'Best Fitness',
-            data: [],
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-            tension: 0.1,
-            fill: false
-          }, {
-            label: 'Average Fitness',
-            data: [],
-            borderColor: '#28a745',
-            backgroundColor: 'rgba(40, 167, 69, 0.1)',
-            tension: 0.1,
-            fill: false
-          }]
+          datasets: [
+            {
+              label: "Best Fitness",
+              data: [],
+              borderColor: "#007bff",
+              backgroundColor: "rgba(0, 123, 255, 0.1)",
+              tension: 0.1,
+              fill: false,
+            },
+            {
+              label: "Average Fitness",
+              data: [],
+              borderColor: "#28a745",
+              backgroundColor: "rgba(40, 167, 69, 0.1)",
+              tension: 0.1,
+              fill: false,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -196,35 +216,37 @@ export class TrainingDashboard {
               beginAtZero: true,
               title: {
                 display: true,
-                text: 'Fitness Score'
-              }
+                text: "Fitness Score",
+              },
             },
             x: {
               title: {
                 display: true,
-                text: 'Generation'
-              }
-            }
-          }
-        }
+                text: "Generation",
+              },
+            },
+          },
+        },
       });
     }
 
     // Lap Completion Chart
-    const lapsCtx = document.getElementById('laps-chart')?.getContext('2d');
+    const lapsCtx = document.getElementById("laps-chart")?.getContext("2d");
     if (lapsCtx) {
       this.lapsChart = new Chart(lapsCtx, {
-        type: 'line',
+        type: "line",
         data: {
           labels: [],
-          datasets: [{
-            label: 'Best Laps Completed',
-            data: [],
-            borderColor: '#dc3545',
-            backgroundColor: 'rgba(220, 53, 69, 0.1)',
-            tension: 0.1,
-            fill: true
-          }]
+          datasets: [
+            {
+              label: "Best Laps Completed",
+              data: [],
+              borderColor: "#dc3545",
+              backgroundColor: "rgba(220, 53, 69, 0.1)",
+              tension: 0.1,
+              fill: true,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -233,28 +255,32 @@ export class TrainingDashboard {
               beginAtZero: true,
               title: {
                 display: true,
-                text: 'Laps Completed'
-              }
-            }
-          }
-        }
+                text: "Laps Completed",
+              },
+            },
+          },
+        },
       });
     }
 
     // Survival Rate Chart
-    const survivalCtx = document.getElementById('survival-chart')?.getContext('2d');
+    const survivalCtx = document
+      .getElementById("survival-chart")
+      ?.getContext("2d");
     if (survivalCtx) {
       this.survivalChart = new Chart(survivalCtx, {
-        type: 'bar',
+        type: "bar",
         data: {
           labels: [],
-          datasets: [{
-            label: 'Survival Rate (%)',
-            data: [],
-            backgroundColor: 'rgba(255, 193, 7, 0.6)',
-            borderColor: '#ffc107',
-            borderWidth: 1
-          }]
+          datasets: [
+            {
+              label: "Survival Rate (%)",
+              data: [],
+              backgroundColor: "rgba(255, 193, 7, 0.6)",
+              borderColor: "#ffc107",
+              borderWidth: 1,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -264,29 +290,31 @@ export class TrainingDashboard {
               max: 100,
               title: {
                 display: true,
-                text: 'Survival Percentage'
-              }
-            }
-          }
-        }
+                text: "Survival Percentage",
+              },
+            },
+          },
+        },
       });
     }
 
     // Speed Performance Chart
-    const speedCtx = document.getElementById('speed-chart')?.getContext('2d');
+    const speedCtx = document.getElementById("speed-chart")?.getContext("2d");
     if (speedCtx) {
       this.speedChart = new Chart(speedCtx, {
-        type: 'line',
+        type: "line",
         data: {
           labels: [],
-          datasets: [{
-            label: 'Average Speed',
-            data: [],
-            borderColor: '#6610f2',
-            backgroundColor: 'rgba(102, 16, 242, 0.1)',
-            tension: 0.1,
-            fill: false
-          }]
+          datasets: [
+            {
+              label: "Average Speed",
+              data: [],
+              borderColor: "#6610f2",
+              backgroundColor: "rgba(102, 16, 242, 0.1)",
+              tension: 0.1,
+              fill: false,
+            },
+          ],
         },
         options: {
           responsive: true,
@@ -295,11 +323,11 @@ export class TrainingDashboard {
               beginAtZero: true,
               title: {
                 display: true,
-                text: 'Speed (km/h)'
-              }
-            }
-          }
-        }
+                text: "Speed (km/h)",
+              },
+            },
+          },
+        },
       });
     }
   }
@@ -309,11 +337,11 @@ export class TrainingDashboard {
    */
   setupEventListeners() {
     // Chart visibility toggles
-    const showAvgFitness = document.getElementById('show-avg-fitness');
-    const showBestFitness = document.getElementById('show-best-fitness');
+    const showAvgFitness = document.getElementById("show-avg-fitness");
+    const showBestFitness = document.getElementById("show-best-fitness");
 
     if (showAvgFitness) {
-      showAvgFitness.addEventListener('change', (e) => {
+      showAvgFitness.addEventListener("change", (e) => {
         if (this.fitnessChart) {
           this.fitnessChart.data.datasets[1].hidden = !e.target.checked;
           this.fitnessChart.update();
@@ -322,7 +350,7 @@ export class TrainingDashboard {
     }
 
     if (showBestFitness) {
-      showBestFitness.addEventListener('change', (e) => {
+      showBestFitness.addEventListener("change", (e) => {
         if (this.fitnessChart) {
           this.fitnessChart.data.datasets[0].hidden = !e.target.checked;
           this.fitnessChart.update();
@@ -343,7 +371,7 @@ export class TrainingDashboard {
       bestLaps,
       aliveCount,
       avgSpeed,
-      agents
+      agents,
     } = data;
 
     // Store historical data
@@ -382,49 +410,61 @@ export class TrainingDashboard {
     const { generation, bestFitness, bestLaps, aliveCount } = data;
 
     // Update DOM elements
-    this.updateElement('current-gen-stat', generation);
-    this.updateElement('best-fitness-stat', bestFitness.toFixed(2));
-    this.updateElement('best-laps-stat', bestLaps);
-    this.updateElement('avg-survival-stat', `${((aliveCount / TOTAL) * 100).toFixed(1)}%`);
+    this.updateElement("current-gen-stat", generation);
+    this.updateElement("best-fitness-stat", bestFitness.toFixed(2));
+    this.updateElement("best-laps-stat", bestLaps);
+    this.updateElement(
+      "avg-survival-stat",
+      `${((aliveCount / TOTAL) * 100).toFixed(1)}%`,
+    );
 
     // Update training time
     const elapsed = Date.now() - this.startTime;
     const minutes = Math.floor(elapsed / 60000);
     const seconds = Math.floor((elapsed % 60000) / 1000);
-    this.updateElement('training-time-stat', `${minutes}m ${seconds}s`);
+    this.updateElement("training-time-stat", `${minutes}m ${seconds}s`);
   }
 
   /**
    * Update all charts with current data
    */
   updateCharts() {
+    if (this.fallbackMode) {
+      this.updateFallbackCharts();
+      return;
+    }
+
     if (!this.fitnessChart) return;
 
     // Update fitness chart
     this.fitnessChart.data.labels = this.generationHistory.slice();
-    this.fitnessChart.data.datasets[0].data = this.fitnessHistory.map(f => f.best);
-    this.fitnessChart.data.datasets[1].data = this.fitnessHistory.map(f => f.avg);
-    this.fitnessChart.update('none');
+    this.fitnessChart.data.datasets[0].data = this.fitnessHistory.map(
+      (f) => f.best,
+    );
+    this.fitnessChart.data.datasets[1].data = this.fitnessHistory.map(
+      (f) => f.avg,
+    );
+    this.fitnessChart.update("none");
 
     // Update laps chart
     if (this.lapsChart) {
       this.lapsChart.data.labels = this.generationHistory.slice();
       this.lapsChart.data.datasets[0].data = this.lapHistory.slice();
-      this.lapsChart.update('none');
+      this.lapsChart.update("none");
     }
 
     // Update survival chart
     if (this.survivalChart) {
       this.survivalChart.data.labels = this.generationHistory.slice();
       this.survivalChart.data.datasets[0].data = this.survivalHistory.slice();
-      this.survivalChart.update('none');
+      this.survivalChart.update("none");
     }
 
     // Update speed chart
     if (this.speedChart) {
       this.speedChart.data.labels = this.generationHistory.slice();
       this.speedChart.data.datasets[0].data = this.speedHistory.slice();
-      this.speedChart.update('none');
+      this.speedChart.update("none");
     }
   }
 
@@ -438,28 +478,35 @@ export class TrainingDashboard {
     // Calculate improvement rate
     const recent = this.fitnessHistory.slice(-5);
     const older = this.fitnessHistory.slice(-10, -5);
-    const recentAvg = recent.reduce((sum, f) => sum + f.best, 0) / recent.length;
-    const olderAvg = older.length > 0 ? older.reduce((sum, f) => sum + f.best, 0) / older.length : recentAvg;
-    const improvementRate = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg * 100) : 0;
+    const recentAvg =
+      recent.reduce((sum, f) => sum + f.best, 0) / recent.length;
+    const olderAvg =
+      older.length > 0
+        ? older.reduce((sum, f) => sum + f.best, 0) / older.length
+        : recentAvg;
+    const improvementRate =
+      olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
 
     // Calculate convergence score (inverse of fitness variance)
-    const recentFitnesses = recent.map(f => f.best);
+    const recentFitnesses = recent.map((f) => f.best);
     const variance = this.calculateVariance(recentFitnesses);
     const convergenceScore = variance > 0 ? (1 / (1 + variance)).toFixed(3) : 1;
 
     // Calculate diversity index (fitness spread)
-    const fitnesses = agents.map(agent => agent.fitness);
+    const fitnesses = agents.map((agent) => agent.fitness);
     const diversityIndex = this.calculateVariance(fitnesses).toFixed(2);
 
     // Calculate success rate (agents completing at least 1 lap)
-    const successfulAgents = agents.filter(agent => agent.lapsCompleted > 0).length;
-    const successRate = (successfulAgents / agents.length * 100).toFixed(1);
+    const successfulAgents = agents.filter(
+      (agent) => agent.lapsCompleted > 0,
+    ).length;
+    const successRate = ((successfulAgents / agents.length) * 100).toFixed(1);
 
     // Update analytics display
-    this.updateElement('improvement-rate', `${improvementRate.toFixed(1)}%`);
-    this.updateElement('convergence-score', convergenceScore);
-    this.updateElement('diversity-index', diversityIndex);
-    this.updateElement('success-rate', `${successRate}%`);
+    this.updateElement("improvement-rate", `${improvementRate.toFixed(1)}%`);
+    this.updateElement("convergence-score", convergenceScore);
+    this.updateElement("diversity-index", diversityIndex);
+    this.updateElement("success-rate", `${successRate}%`);
   }
 
   /**
@@ -470,7 +517,7 @@ export class TrainingDashboard {
   calculateVariance(values) {
     if (values.length === 0) return 0;
     const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-    const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+    const squaredDiffs = values.map((val) => Math.pow(val - mean, 2));
     return squaredDiffs.reduce((sum, diff) => sum + diff, 0) / values.length;
   }
 
@@ -479,15 +526,15 @@ export class TrainingDashboard {
    */
   toggle() {
     this.isVisible = !this.isVisible;
-    const dashboard = document.getElementById('training-dashboard');
+    const dashboard = document.getElementById("training-dashboard");
 
     if (dashboard) {
-      dashboard.classList.toggle('hidden', !this.isVisible);
+      dashboard.classList.toggle("hidden", !this.isVisible);
 
       // Hide other panels when showing dashboard
       if (this.isVisible) {
-        document.getElementById('settings-panel')?.classList.add('hidden');
-        document.getElementById('about-panel')?.classList.add('hidden');
+        document.getElementById("settings-panel")?.classList.add("hidden");
+        document.getElementById("about-panel")?.classList.add("hidden");
       }
     }
   }
@@ -504,15 +551,15 @@ export class TrainingDashboard {
       fitnessHistory: this.fitnessHistory,
       lapHistory: this.lapHistory,
       survivalHistory: this.survivalHistory,
-      speedHistory: this.speedHistory
+      speedHistory: this.speedHistory,
     };
 
     const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
 
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = URL.createObjectURL(dataBlob);
-    link.download = `training-data-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `training-data-${new Date().toISOString().split("T")[0]}.json`;
     link.click();
 
     URL.revokeObjectURL(link.href);
@@ -522,7 +569,7 @@ export class TrainingDashboard {
    * Reset all statistics and charts
    */
   resetStats() {
-    if (confirm('Are you sure you want to reset all training statistics?')) {
+    if (confirm("Are you sure you want to reset all training statistics?")) {
       this.generationHistory = [];
       this.fitnessHistory = [];
       this.lapHistory = [];
@@ -534,7 +581,7 @@ export class TrainingDashboard {
       // Clear charts
       if (this.fitnessChart) {
         this.fitnessChart.data.labels = [];
-        this.fitnessChart.data.datasets.forEach(dataset => {
+        this.fitnessChart.data.datasets.forEach((dataset) => {
           dataset.data = [];
         });
         this.fitnessChart.update();
@@ -559,11 +606,11 @@ export class TrainingDashboard {
       }
 
       // Reset summary stats
-      this.updateElement('current-gen-stat', '0');
-      this.updateElement('best-fitness-stat', '0');
-      this.updateElement('best-laps-stat', '0');
-      this.updateElement('avg-survival-stat', '0%');
-      this.updateElement('training-time-stat', '0m 0s');
+      this.updateElement("current-gen-stat", "0");
+      this.updateElement("best-fitness-stat", "0");
+      this.updateElement("best-laps-stat", "0");
+      this.updateElement("avg-survival-stat", "0%");
+      this.updateElement("training-time-stat", "0m 0s");
     }
   }
 
@@ -580,20 +627,172 @@ export class TrainingDashboard {
   }
 
   /**
+   * Show error message when Chart.js fails to load and enable fallback charts
+   */
+  showChartLoadingError() {
+    const chartsContainer = document.querySelector(".charts-container");
+    if (chartsContainer) {
+      chartsContainer.innerHTML = `
+        <div class="chart-loading-error">
+          <h3>Using Fallback Charts</h3>
+          <p>Chart.js library failed to load, using simple canvas-based charts instead.</p>
+          <button onclick="location.reload()">Try Reloading Chart.js</button>
+        </div>
+        <div class="fallback-charts">
+          <div class="fallback-chart-section">
+            <h3>Fitness Evolution</h3>
+            <canvas id="fallback-fitness-chart" width="400" height="200"></canvas>
+          </div>
+          <div class="fallback-chart-section">
+            <h3>Best Laps</h3>
+            <canvas id="fallback-laps-chart" width="400" height="200"></canvas>
+          </div>
+        </div>
+      `;
+      this.initializeFallbackCharts();
+    }
+  }
+
+  /**
+   * Initialize simple canvas-based charts as fallback
+   */
+  initializeFallbackCharts() {
+    this.fallbackFitnessCanvas = document.getElementById(
+      "fallback-fitness-chart",
+    );
+    this.fallbackLapsCanvas = document.getElementById("fallback-laps-chart");
+    this.fallbackMode = true;
+  }
+
+  /**
+   * Update fallback charts with simple line drawings
+   */
+  updateFallbackCharts() {
+    if (!this.fallbackMode || this.generationHistory.length === 0) return;
+
+    // Update fitness chart
+    if (this.fallbackFitnessCanvas) {
+      const ctx = this.fallbackFitnessCanvas.getContext("2d");
+      this.drawSimpleLineChart(
+        ctx,
+        this.fitnessHistory.map((f) => f.best),
+        "Best Fitness",
+        "#007bff",
+      );
+    }
+
+    // Update laps chart
+    if (this.fallbackLapsCanvas) {
+      const ctx = this.fallbackLapsCanvas.getContext("2d");
+      this.drawSimpleLineChart(ctx, this.lapHistory, "Best Laps", "#dc3545");
+    }
+  }
+
+  /**
+   * Draw a simple line chart on canvas
+   */
+  drawSimpleLineChart(ctx, data, label, color) {
+    const canvas = ctx.canvas;
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = 30;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Set styles
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    ctx.font = "12px Arial";
+
+    if (data.length === 0) {
+      ctx.fillText("No data available", width / 2 - 50, height / 2);
+      return;
+    }
+
+    // Calculate scales
+    const maxVal = Math.max(...data);
+    const minVal = Math.min(...data);
+    const range = maxVal - minVal || 1;
+
+    // Draw axes
+    ctx.strokeStyle = "#666";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, height - padding);
+    ctx.lineTo(width - padding, height - padding);
+    ctx.stroke();
+
+    // Draw data line
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for (let i = 0; i < data.length; i++) {
+      const x =
+        padding + (i / Math.max(data.length - 1, 1)) * (width - 2 * padding);
+      const y =
+        height -
+        padding -
+        ((data[i] - minVal) / range) * (height - 2 * padding);
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+
+    // Draw title
+    ctx.fillStyle = "#333";
+    ctx.font = "bold 14px Arial";
+    ctx.fillText(label, 10, 20);
+
+    // Draw current value
+    if (data.length > 0) {
+      ctx.font = "12px Arial";
+      ctx.fillText(
+        `Current: ${data[data.length - 1].toFixed(2)}`,
+        width - 100,
+        20,
+      );
+    }
+  }
+
+  /**
    * Dispose of chart instances and clean up
    */
   dispose() {
     if (this.fitnessChart) {
-      this.fitnessChart.destroy();
+      try {
+        this.fitnessChart.destroy();
+      } catch (error) {
+        console.warn("Error disposing fitness chart:", error);
+      }
     }
     if (this.lapsChart) {
-      this.lapsChart.destroy();
+      try {
+        this.lapsChart.destroy();
+      } catch (error) {
+        console.warn("Error disposing laps chart:", error);
+      }
     }
     if (this.survivalChart) {
-      this.survivalChart.destroy();
+      try {
+        this.survivalChart.destroy();
+      } catch (error) {
+        console.warn("Error disposing survival chart:", error);
+      }
     }
     if (this.speedChart) {
-      this.speedChart.destroy();
+      try {
+        this.speedChart.destroy();
+      } catch (error) {
+        console.warn("Error disposing speed chart:", error);
+      }
     }
   }
 }
