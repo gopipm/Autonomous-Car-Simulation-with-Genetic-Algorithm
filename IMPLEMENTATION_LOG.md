@@ -187,3 +187,71 @@ The new ABOUT.md provides comprehensive documentation including:
 - Technical requirements and browser compatibility
 
 This enhancement significantly improves content management and provides a foundation for future documentation improvements.
+
+## Critical Bug Fixes - December 2024
+
+### TensorFlow.js Memory Management Fix
+
+**Issue:** "LayersVariable dense_Dense3729/kernel is already disposed" error causing cars to go outside track boundaries.
+
+**Root Cause:** Race condition in genetic algorithm where neural network brains were being disposed before copying was complete, leading to corrupted brain states and invalid car behavior.
+
+**Solutions Implemented:**
+
+#### Memory Management (ga.js):
+- Create brain copies BEFORE disposing original agents
+- Separate elite brain copying from agent disposal process
+- Safe brain copying in pickOne() selection function
+- Proper cleanup of temporary brain copies
+
+#### Neural Network Robustness (nn.js):
+- Add disposal state checking before copy operations
+- Comprehensive error handling with fallback to new random networks
+- Memory leak prevention with proper tensor lifecycle management
+- Graceful degradation when tensors are disposed
+
+#### Particle Safety (particle.js):
+- Use pre-copied brains directly without re-copying
+- Eliminated double-copying that caused disposal conflicts
+- Better handling of NeuralNetwork vs tf.Sequential input types
+
+#### Simulation Recovery (sketch.js):
+- Wrap all genetic operations in try-catch blocks
+- Graceful fallback when brain operations fail
+- Memory monitoring and leak detection
+- Safe agent update loops with error recovery
+
+### Chart.js Loading Fix
+
+**Issue:** "Cannot use import statement outside a module" error from Chart.js CDN causing dashboard charts to fail.
+
+**Root Cause:** Chart.js 4.x ESM/UMD module loading conflicts with browser module context.
+
+**Solutions Implemented:**
+
+#### Library Compatibility:
+- Switch to Chart.js UMD version (chart.umd.js) for better browser compatibility
+- Add comprehensive Chart.js loading detection and error handling
+- Safe chart disposal with try-catch blocks
+
+#### Fallback System:
+- Canvas-based fallback charts when Chart.js fails to load
+- Simple line charts for fitness and laps data with real-time updates
+- Professional styling matching main dashboard theme
+- Graceful degradation maintaining core functionality
+
+#### Error Recovery:
+- User-friendly error messages with refresh option
+- Check Chart.js availability before initialization
+- Option to reload page and retry Chart.js loading
+
+### Impact Assessment
+
+Both fixes ensure:
+- **Stable Evolution:** Cars properly evolve without neural network corruption
+- **Reliable Analytics:** Dashboard works even with CDN issues
+- **Memory Efficiency:** Proper tensor lifecycle management prevents leaks
+- **User Experience:** Graceful error handling prevents simulation crashes
+- **Cross-Browser Support:** Fallback systems ensure compatibility
+
+These critical fixes resolve the core stability issues and provide a robust, production-ready simulation environment.
