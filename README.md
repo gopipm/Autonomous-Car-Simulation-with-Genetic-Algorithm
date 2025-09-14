@@ -125,6 +125,13 @@ The project uses the following external libraries:
 - **Purpose**: Collision detection for obstacles and track boundaries
 - **CDN**: https://cdn.jsdelivr.net/npm/p5.collide2d
 
+## Recent Fixes
+
+### p5.js v2.0.5 Compatibility
+- Fixed compatibility issue with `p5.prototype.registerPreloadMethod` which was removed in p5.js v2.0.5
+- Updated `loadbinary.js` to work with the new p5.js version
+- Maintained all existing functionality while ensuring compatibility with updated libraries
+
 ## Code Improvements
 
 The code has been refactored to improve:
