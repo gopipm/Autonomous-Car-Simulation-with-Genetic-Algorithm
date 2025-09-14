@@ -11,7 +11,12 @@ export class NeuralNetwork {
    * @param {number} output_nodes - If input_nodes_or_model is a model, this is the hidden_nodes count. Otherwise, it's the output_nodes count.
    * @param {number} [actual_output_nodes] - If input_nodes_or_model is a model, this is the actual output_nodes count.
    */
-  constructor(input_nodes_or_model, hidden_nodes, output_nodes, actual_output_nodes) {
+  constructor(
+    input_nodes_or_model,
+    hidden_nodes,
+    output_nodes,
+    actual_output_nodes,
+  ) {
     // Determine network dimensions
     if (input_nodes_or_model instanceof tf.Sequential) {
       this.input_nodes = hidden_nodes;
@@ -31,9 +36,9 @@ export class NeuralNetwork {
       tf.tidy(() => {
         const sourceModel = input_nodes_or_model;
         const sourceWeights = sourceModel.getWeights();
-        const newWeights = sourceWeights.map(w => w.clone()); // Clone each weight tensor
+        const newWeights = sourceWeights.map((w) => w.clone()); // Clone each weight tensor
         this.model.setWeights(newWeights);
-        newWeights.forEach(w => w.dispose()); // Explicitly dispose cloned weights after setting
+        newWeights.forEach((w) => w.dispose()); // Explicitly dispose cloned weights after setting
       });
     }
   }
@@ -43,7 +48,7 @@ export class NeuralNetwork {
    * @returns {Promise<void>} A promise that resolves when the model is saved
    */
   async save() {
-    await this.model.save('downloads://my-model', { includeOptimizer: false });
+    await this.model.save("downloads://my-model", { includeOptimizer: false });
     console.log("Model saved successfully");
   }
 
@@ -52,25 +57,63 @@ export class NeuralNetwork {
    * @returns {NeuralNetwork} A new NeuralNetwork instance with the same weights
    */
   copy() {
+    // Check if the model is disposed before attempting to copy
+    if (this.model.isDisposedInternal) {
+      console.error("Cannot copy neural network: model is already disposed");
+      // Return a new random neural network as fallback
+      return new NeuralNetwork(
+        this.input_nodes,
+        this.hidden_nodes,
+        this.output_nodes,
+      );
+    }
+
     return tf.tidy(() => {
-      // Create a new NeuralNetwork instance. Its constructor will create its own empty model.
-      const newNN = new NeuralNetwork(this.input_nodes, this.hidden_nodes, this.output_nodes);
+      try {
+        // Create a new NeuralNetwork instance. Its constructor will create its own empty model.
+        const newNN = new NeuralNetwork(
+          this.input_nodes,
+          this.hidden_nodes,
+          this.output_nodes,
+        );
 
-      // Get weights from *this* NeuralNetwork's model.
-      const weights = this.model.getWeights();
-      
-      // Clone the weights. These are new tensors.
-      const weightCopies = weights.map(w => w.clone());
+        // Get weights from *this* NeuralNetwork's model.
+        const weights = this.model.getWeights();
 
-      // Set the cloned weights to the *new* NeuralNetwork's internal model.
-      // newNN.model now takes ownership of these weightCopies.
-      newNN.model.setWeights(weightCopies);
+        // Check if weights are valid
+        if (!weights || weights.length === 0) {
+          console.warn(
+            "No weights found in source model, returning new random network",
+          );
+          return newNN;
+        }
 
-      // The original 'weights' (references) and the 'weightCopies' (cloned tensors)
-      // are now either owned by newNN.model or are temporary and will be disposed by tf.tidy.
-      // No explicit dispose of weightCopies here, as newNN.model owns them.
+        // Clone the weights. These are new tensors.
+        const weightCopies = weights.map((w) => {
+          if (w.isDisposedInternal) {
+            throw new Error("Source weight tensor is disposed");
+          }
+          return w.clone();
+        });
 
-      return newNN;
+        // Set the cloned weights to the *new* NeuralNetwork's internal model.
+        // newNN.model now takes ownership of these weightCopies.
+        newNN.model.setWeights(weightCopies);
+
+        // The original 'weights' (references) and the 'weightCopies' (cloned tensors)
+        // are now either owned by newNN.model or are temporary and will be disposed by tf.tidy.
+        // No explicit dispose of weightCopies here, as newNN.model owns them.
+
+        return newNN;
+      } catch (error) {
+        console.error("Error copying neural network:", error);
+        // Return a new random neural network as fallback
+        return new NeuralNetwork(
+          this.input_nodes,
+          this.hidden_nodes,
+          this.output_nodes,
+        );
+      }
     });
   }
 
@@ -126,22 +169,22 @@ export class NeuralNetwork {
    */
   createModel() {
     const model = tf.sequential();
-    
+
     // Hidden layer with sigmoid activation
     const hidden = tf.layers.dense({
       units: this.hidden_nodes,
       inputShape: [this.input_nodes],
-      activation: 'sigmoid'
+      activation: "sigmoid",
     });
     model.add(hidden);
-    
+
     // Output layer with sigmoid activation
     const output = tf.layers.dense({
       units: this.output_nodes,
-      activation: 'sigmoid'
+      activation: "sigmoid",
     });
     model.add(output);
-    
+
     return model;
   }
 }

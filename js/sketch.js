@@ -224,16 +224,27 @@ function buildTrack() {
  * Wrapper function to call nextGeneration from ga.js and update sketch.js state.
  */
 async function callNextGeneration() {
-  const result = await nextGeneration(
-    agents,
-    savedagents,
-    generationCount,
-    start, // Pass start position for new particles
-    saveSimulationState, // Pass the save state callback
-  );
-  agents = result.newAgents;
-  savedagents = result.newSavedAgents;
-  generationCount = result.newGenerationCount;
+  try {
+    const result = await nextGeneration(
+      agents,
+      savedagents,
+      generationCount,
+      start, // Pass start position for new particles
+      saveSimulationState, // Pass the save state callback
+    );
+    agents = result.newAgents;
+    savedagents = result.newSavedAgents;
+    generationCount = result.newGenerationCount;
+  } catch (error) {
+    console.error("Error in nextGeneration:", error);
+    // Create new random agents as fallback
+    agents = [];
+    for (let i = 0; i < TOTAL; i++) {
+      agents.push(new Particle(null, start));
+    }
+    savedagents = [];
+    generationCount++;
+  }
 }
 
 /**
@@ -254,6 +265,11 @@ window.setup = async function () {
   // Initialize training dashboard
   dashboard = new TrainingDashboard();
   window.dashboardInstance = dashboard; // Make it globally accessible for HTML onclick handlers
+
+  // Add memory monitoring for debugging
+  if (typeof tf !== "undefined") {
+    console.log("Initial TensorFlow.js memory:", tf.memory());
+  }
 
   await loadSimulationState(); // Load state after slider is created
 
@@ -529,20 +545,36 @@ window.draw = function () {
 
   // Run simulation for multiple cycles per frame
   for (let n = 0; n < cycles; n++) {
-    // Update all agents
-    for (let agent of agents) {
-      agent.look(walls, obstacles);
-      agent.check(checkpoints);
-      agent.bounds();
-      agent.update();
-      agent.show();
+    // Update all agents with error handling
+    for (let i = agents.length - 1; i >= 0; i--) {
+      try {
+        const agent = agents[i];
+        agent.look(walls, obstacles);
+        agent.check(checkpoints);
+        agent.bounds();
+        agent.update();
+        agent.show();
+      } catch (error) {
+        console.error("Error updating agent:", error);
+        // Remove problematic agent
+        const problematicAgent = agents.splice(i, 1)[0];
+        if (problematicAgent) {
+          problematicAgent.dispose();
+        }
+      }
     }
 
     // Remove dead or finished agents
     for (let i = agents.length - 1; i >= 0; i--) {
       const agent = agents[i];
       if (agent.dead || agent.finished) {
-        savedagents.push(agents.splice(i, 1)[0]);
+        try {
+          savedagents.push(agents.splice(i, 1)[0]);
+        } catch (error) {
+          console.error("Error moving agent to savedagents:", error);
+          // Remove the agent without saving if there's an error
+          agents.splice(i, 1);
+        }
       }
 
       // Trigger new generation if fitness threshold is reached
@@ -553,19 +585,32 @@ window.draw = function () {
 
     // Generate new track and population if needed
     if (agents.length !== 0 && changeMap) {
-      for (let i = agents.length - 1; i >= 0; i--) {
-        savedagents.push(agents.splice(i, 1)[0]);
-      }
+      try {
+        for (let i = agents.length - 1; i >= 0; i--) {
+          savedagents.push(agents.splice(i, 1)[0]);
+        }
 
-      buildTrack();
-      callNextGeneration(); // Call the wrapper
-      changeMap = false;
+        buildTrack();
+        callNextGeneration(); // Call the wrapper
+        changeMap = false;
+      } catch (error) {
+        console.error("Error during generation change:", error);
+        changeMap = false;
+      }
     }
 
     // Generate new population if all agents are dead
     if (agents.length === 0) {
-      buildTrack();
-      callNextGeneration(); // Call the wrapper
+      try {
+        buildTrack();
+        callNextGeneration(); // Call the wrapper
+      } catch (error) {
+        console.error("Error generating new population:", error);
+        // Create fallback population
+        for (let i = 0; i < TOTAL; i++) {
+          agents.push(new Particle(null, start));
+        }
+      }
     }
   }
 
@@ -573,9 +618,13 @@ window.draw = function () {
   bestP = null;
   let maxFitnessCurrent = -1;
   for (let agent of agents) {
-    if (agent.fitness > maxFitnessCurrent) {
-      maxFitnessCurrent = agent.fitness;
-      bestP = agent;
+    try {
+      if (agent.fitness > maxFitnessCurrent) {
+        maxFitnessCurrent = agent.fitness;
+        bestP = agent;
+      }
+    } catch (error) {
+      console.warn("Error accessing agent fitness:", error);
     }
   }
 
@@ -605,36 +654,40 @@ window.draw = function () {
 
   // Highlight best agent and render its view ONLY if bestP is defined
   if (bestP) {
-    bestP.highlight();
+    try {
+      bestP.highlight();
 
-    // Render 3D-like view from best agent's perspective
-    let data = bestP.renderView(walls, obstacles);
-    let scene = data["scene"];
-    let colors = data["colors"];
-    const w = viewAreaWidth / scene.length; // Use viewAreaWidth for scaling
+      // Render 3D-like view from best agent's perspective
+      let data = bestP.renderView(walls, obstacles);
+      let scene = data["scene"];
+      let colors = data["colors"];
+      const w = viewAreaWidth / scene.length; // Use viewAreaWidth for scaling
 
-    push();
-    translate(simulationAreaWidth, 0); // Translate to the right of the simulation area
-    for (let i = 0; i < scene.length; i++) {
-      noStroke();
-      let sq = scene[i] * scene[i];
-      let swq = SIGHT * SIGHT; // Use SIGHT for better scaling
-      const b = map(sq, 0, swq, 200, 0);
-      const h = map(sq, 0, swq, trackheight, 0); // Scale height to trackheight
+      push();
+      translate(simulationAreaWidth, 0); // Translate to the right of the simulation area
+      for (let i = 0; i < scene.length; i++) {
+        noStroke();
+        let sq = scene[i] * scene[i];
+        let swq = SIGHT * SIGHT; // Use SIGHT for better scaling
+        const b = map(sq, 0, swq, 200, 0);
+        const h = map(sq, 0, swq, trackheight, 0); // Scale height to trackheight
 
-      if (colors[i] === 1) {
-        // Obstacle color (red)
-        fill(b, 0, 0);
+        if (colors[i] === 1) {
+          // Obstacle color (red)
+          fill(b, 0, 0);
+        }
+        if (colors[i] === 0) {
+          // Wall color (gray/blue)
+          fill(b, b, b + 30, b);
+        }
+
+        rectMode(CENTER);
+        rect(i * w + w / 2, trackheight / 2, w + 1, h); // Center rect vertically
       }
-      if (colors[i] === 0) {
-        // Wall color (gray/blue)
-        fill(b, b, b + 30, b);
-      }
-
-      rectMode(CENTER);
-      rect(i * w + w / 2, trackheight / 2, w + 1, h); // Center rect vertically
+      pop();
+    } catch (error) {
+      console.warn("Error rendering best agent view:", error);
     }
-    pop();
   }
 
   // Update HTML info bar
@@ -644,5 +697,16 @@ window.draw = function () {
   if (frameCount % 30 === 0) {
     // Update dashboard every 30 frames (~0.5 seconds)
     updateDashboard();
+
+    // Memory monitoring for debugging
+    if (typeof tf !== "undefined" && frameCount % 300 === 0) {
+      const memInfo = tf.memory();
+      console.log(
+        `TensorFlow.js Memory - Tensors: ${memInfo.numTensors}, Bytes: ${memInfo.numBytes}`,
+      );
+      if (memInfo.numTensors > 1000) {
+        console.warn("High tensor count detected, potential memory leak");
+      }
+    }
   }
 };

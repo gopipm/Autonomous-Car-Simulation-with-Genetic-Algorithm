@@ -1,5 +1,5 @@
-import { Particle } from './particle.js';
-import { TOTAL, ELITISM_COUNT } from './config.js'; // MUTATION_RATE is now used in Particle
+import { Particle } from "./particle.js";
+import { TOTAL, ELITISM_COUNT } from "./config.js"; // MUTATION_RATE is now used in Particle
 
 /**
  * Calculate the next generation of cars using genetic algorithm
@@ -17,11 +17,12 @@ export async function nextGeneration(
   currentSavedAgents,
   currentGenerationCount,
   startPos,
-  saveStateCallback
+  saveStateCallback,
 ) {
-  console.log('Generating next generation');
-  
+  console.log("Generating next generation");
+
   let brainToPersist = null;
+  let eliteBrains = [];
 
   // Only calculate fitness if there are saved agents to evaluate
   if (currentSavedAgents.length > 0) {
@@ -29,15 +30,21 @@ export async function nextGeneration(
     // Sort savedagents by fitness in descending order
     currentSavedAgents.sort((a, b) => b.fitness - a.fitness);
     // Get a copy of the best brain *before* disposing the original agents
-    brainToPersist = currentSavedAgents[0].brain.copy(); 
+    brainToPersist = currentSavedAgents[0].brain.copy();
+
+    // Create copies of elite brains before disposing agents
+    const actualElites = Math.min(ELITISM_COUNT, currentSavedAgents.length);
+    for (let i = 0; i < actualElites; i++) {
+      eliteBrains.push(currentSavedAgents[i].brain.copy());
+    }
   }
 
   let newAgents = []; // This will be the new generation
   const actualElites = Math.min(ELITISM_COUNT, currentSavedAgents.length);
 
-  // Implement elitism: carry over the top 'actualElites' agents
-  for (let i = 0; i < actualElites; i++) {
-    newAgents.push(new Particle(currentSavedAgents[i].brain, startPos));
+  // Implement elitism: use the copied elite brains
+  for (let i = 0; i < actualElites && i < eliteBrains.length; i++) {
+    newAgents.push(new Particle(eliteBrains[i], startPos));
   }
 
   // Create the rest of the new generation
@@ -56,7 +63,12 @@ export async function nextGeneration(
   for (let i = 0; i < currentSavedAgents.length; i++) {
     currentSavedAgents[i].dispose();
   }
-  
+
+  // Dispose of elite brain copies after creating new particles
+  for (let i = 0; i < eliteBrains.length; i++) {
+    eliteBrains[i].dispose();
+  }
+
   let newSavedAgents = []; // Clear the savedagents array for the next cycle
 
   let newGenerationCount = currentGenerationCount + 1; // Increment generation count here
@@ -72,7 +84,7 @@ export async function nextGeneration(
   return {
     newAgents: newAgents,
     newSavedAgents: newSavedAgents,
-    newGenerationCount: newGenerationCount
+    newGenerationCount: newGenerationCount,
   };
 }
 
@@ -92,12 +104,17 @@ export function pickOne(savedAgents, startPos) {
     index++;
   }
   index--;
-  
+
   // Create offspring with mutation
   let particle = savedAgents[index];
-  let child = new Particle(particle.brain, startPos);
+  // Create a copy of the brain before creating the child to avoid disposal issues
+  let brainCopy = particle.brain.copy();
+  let child = new Particle(brainCopy, startPos);
   child.mutate();
-  
+
+  // Dispose of the temporary brain copy since the child has its own copy
+  brainCopy.dispose();
+
   return child;
 }
 
@@ -111,13 +128,13 @@ export function calculateFitness(savedAgents) {
   for (let particle of savedAgents) {
     particle.calculateFitness();
   }
-  
+
   // Sum all fitness values for normalization
   let sum = 0;
   for (let particle of savedAgents) {
     sum += particle.fitness;
   }
-  
+
   // Normalize fitness values to sum to 1.0
   for (let particle of savedAgents) {
     particle.fitness = particle.fitness / sum;

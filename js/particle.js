@@ -1,6 +1,6 @@
-import { Ray } from './ray.js';
-import { NeuralNetwork } from './nn.js';
-import { SIGHT, LIFESPAN, MUTATION_RATE } from './config.js';
+import { Ray } from "./ray.js";
+import { NeuralNetwork } from "./nn.js";
+import { SIGHT, LIFESPAN, MUTATION_RATE } from "./config.js";
 
 /**
  * Calculate the perpendicular distance from a point to a line
@@ -11,7 +11,9 @@ import { SIGHT, LIFESPAN, MUTATION_RATE } from './config.js';
  * @returns {number} The perpendicular distance
  */
 export function pldistance(p1, p2, x, y) {
-  const num = abs((p2.y - p1.y) * x - (p2.x - p1.x) * y + p2.x * p1.y - p2.y * p1.x);
+  const num = abs(
+    (p2.y - p1.y) * x - (p2.x - p1.x) * y + p2.x * p1.y - p2.y * p1.x,
+  );
   const den = p5.Vector.dist(p1, p2);
   return num / den;
 }
@@ -32,7 +34,7 @@ export class Particle {
     this.dead = false;
     this.finished = false;
     this.lapsCompleted = 0; // New: Track laps completed
-    
+
     // Physics properties
     this.pos = startPos.copy(); // Use the passed startPos
     this.vel = createVector();
@@ -40,11 +42,11 @@ export class Particle {
     this.maxspeed = 5;
     this.maxforce = 0.2;
     this.sight = SIGHT;
-    
+
     // Sensors (rays for obstacle detection)
     this.view = [];
     this.rays = [];
-    
+
     // Progress tracking
     this.index = 0;
     this.counter = 0;
@@ -57,15 +59,25 @@ export class Particle {
     for (let a = -65; a < 65; a += 10) {
       this.rays.push(new Ray(this.pos.copy(), radians(a)));
     }
-    
+
     // Initialize brain (neural network)
-    if (brain instanceof NeuralNetwork) { // If it's already a NeuralNetwork instance
-      this.brain = brain.copy();
-    } else if (brain instanceof tf.Sequential) { // If it's a raw tf.Sequential model
+    if (brain instanceof NeuralNetwork) {
+      // If it's already a NeuralNetwork instance
+      // For pre-copied brains from genetic algorithm, use directly without copying again
+      // The brain should already be a fresh copy ready to use
+      this.brain = brain;
+    } else if (brain instanceof tf.Sequential) {
+      // If it's a raw tf.Sequential model
       // Create a new NeuralNetwork instance from the loaded model
       // Assuming input_nodes, hidden_nodes, output_nodes are fixed for the loaded model
-      this.brain = new NeuralNetwork(brain, this.rays.length, this.rays.length * 2, 2);
-    } else { // Create a new random brain
+      this.brain = new NeuralNetwork(
+        brain,
+        this.rays.length,
+        this.rays.length * 2,
+        2,
+      );
+    } else {
+      // Create a new random brain
       this.brain = new NeuralNetwork(this.rays.length, this.rays.length * 2, 2);
     }
   }
@@ -109,7 +121,7 @@ export class Particle {
       this.vel.add(this.acc);
       this.vel.limit(this.maxspeed);
       this.acc.set(0, 0);
-      
+
       // Update lifespan counter
       this.counter++;
       if (this.counter > LIFESPAN) {
@@ -165,13 +177,13 @@ export class Particle {
   look(walls, obstacles) {
     const inputs = [];
     this.closeDistFromOb = Infinity;
-    
+
     // Process sensor data
     for (let i = 0; i < this.rays.length; i++) {
       const ray = this.rays[i];
       let closest = null;
       let record = this.sight;
-      
+
       // Check for obstacles
       let ob_point = ray.checkobstacle(obstacles);
       if (ob_point) {
@@ -182,7 +194,7 @@ export class Particle {
           this.closeDistFromOb = record;
         }
       }
-      
+
       // Check for walls
       for (let wall of walls) {
         const pt = ray.cast(wall);
@@ -205,11 +217,11 @@ export class Particle {
 
       // Visualize sensor rays (commented out for performance)
       if (closest) {
-        stroke(255, 100, 100);  // Red color for sensor rays
+        stroke(255, 100, 100); // Red color for sensor rays
         line(this.pos.x, this.pos.y, closest.x, closest.y);
       }
     }
-    
+
     // Use neural network to decide steering
     const output = this.brain.predict(inputs);
     let angle = map(output[0], 0, 1, -PI, PI);
@@ -226,7 +238,12 @@ export class Particle {
    * Check if the particle is out of bounds
    */
   bounds() {
-    if (this.pos.x > width || this.pos.x < 0 || this.pos.y > height || this.pos.y < 0) {
+    if (
+      this.pos.x > width ||
+      this.pos.x < 0 ||
+      this.pos.y > height ||
+      this.pos.y < 0
+    ) {
       this.dead = true;
     }
   }
@@ -254,13 +271,13 @@ export class Particle {
   renderView(walls, obstacles) {
     let scene = [];
     let colors = [];
-    
+
     for (let i = 0; i < this.view.length; i++) {
       const ray = this.view[i];
       let closest = null;
-      let c = 0;  // 0 for walls, 1 for obstacles
+      let c = 0; // 0 for walls, 1 for obstacles
       let record = Infinity;
-      
+
       // Check for obstacles
       let ob_point = ray.renderobstacle(obstacles);
       if (ob_point) {
@@ -271,7 +288,7 @@ export class Particle {
           c = 1;
         }
       }
-      
+
       // Check for walls
       for (let wall of walls) {
         const pt = ray.cast(wall);
@@ -284,14 +301,14 @@ export class Particle {
           }
         }
       }
-      
+
       scene[i] = record;
       colors[i] = c;
     }
-    
+
     return {
       scene: scene,
-      colors: colors
+      colors: colors,
     };
   }
 
@@ -308,7 +325,7 @@ export class Particle {
     rectMode(CENTER);
     rect(0, 0, 20, 10);
     pop();
-    
+
     if (this.goal) {
       this.goal.show();
     }
