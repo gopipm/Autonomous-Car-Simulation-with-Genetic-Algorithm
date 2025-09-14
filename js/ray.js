@@ -56,13 +56,9 @@ class Ray {
     let dis = Infinity;
     
     for (let obstacle of obstacles) {
-      // Check if obstacle point is on the line segment formed by the ray
-      // collidePointLine(pointX, pointY, lineStartX, lineStartY, lineEndX, lineEndY, tolerance)
       if (collidePointLine(obstacle.pos.x, obstacle.pos.y, p1.x, p1.y, p2.x, p2.y, 1)) {
-        // Find the closest obstacle
-        let distance = p5.Vector.dist(this.pos, obstacle.pos);
-        if (distance < dis) {
-          dis = distance;
+        if (dis > p5.Vector.dist(this.pos, obstacle.pos)) {
+          dis = p5.Vector.dist(this.pos, obstacle.pos);
           ob = obstacle;
         }
       }
@@ -83,13 +79,9 @@ class Ray {
     let dis = Infinity;
     
     for (let obstacle of obstacles) {
-      // Check if obstacle point is on the line segment formed by the ray
-      // collidePointLine(pointX, pointY, lineStartX, lineStartY, lineEndX, lineEndY, tolerance)
       if (collidePointLine(obstacle.pos.x, obstacle.pos.y, p1.x, p1.y, p2.x, p2.y, 0.07)) {
-        // Find the closest obstacle
-        let distance = p5.Vector.dist(this.pos, obstacle.pos);
-        if (distance < dis) {
-          dis = distance;
+        if (dis > p5.Vector.dist(this.pos, obstacle.pos)) {
+          dis = p5.Vector.dist(this.pos, obstacle.pos);
           ob = obstacle;
         }
       }

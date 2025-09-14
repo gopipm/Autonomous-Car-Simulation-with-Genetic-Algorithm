@@ -106,42 +106,6 @@ Cars have 13 sensors (rays) spread across a 130-degree field of view to detect:
 - Distance to track boundaries
 - Distance to dynamic obstacles
 
-## Library Versions
-
-The project uses the following external libraries:
-
-### p5.js
-- **Version**: 2.0.5 (September 2025)
-- **Purpose**: Creative coding framework for graphics and interaction
-- **CDN**: https://cdn.jsdelivr.net/npm/p5@2.0.5/lib/p5.min.js
-
-### TensorFlow.js
-- **Version**: 4.22.0 (October 2025)
-- **Purpose**: Machine learning library for neural network implementation
-- **CDN**: https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js
-
-### p5.collide2d
-- **Version**: 0.7.3 (Latest)
-- **Purpose**: Collision detection for obstacles and track boundaries
-- **CDN**: https://cdn.jsdelivr.net/npm/p5.collide2d
-
-## Recent Fixes
-
-### p5.js v2.0.5 Compatibility
-- Fixed compatibility issue with `p5.prototype.registerPreloadMethod` which was removed in p5.js v2.0.5
-- Updated `loadbinary.js` to work with the new p5.js version
-- Maintained all existing functionality while ensuring compatibility with updated libraries
-
-### Sensor Visualization and Obstacle Detection
-- Fixed ray positioning issue where sensors weren't moving with cars
-- Enabled sensor visualization to show rays detecting obstacles and walls
-- Improved obstacle detection accuracy by properly updating ray positions
-- Fixed ray direction calculation to use proper vector multiplication
-
-### Missing Function Bug Fix
-- Restored accidentally removed `pldistance` function that calculates perpendicular distance from a point to a line
-- This function is critical for checkpoint detection in the particle system
-
 ## Code Improvements
 
 The code has been refactored to improve:

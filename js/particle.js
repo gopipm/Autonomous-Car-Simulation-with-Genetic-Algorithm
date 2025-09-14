@@ -168,7 +168,7 @@ class Particle {
           this.closeDistFromOb = record;
         }
       }
-
+      
       // Check for walls
       for (let wall of walls) {
         const pt = ray.cast(wall);
@@ -189,7 +189,7 @@ class Particle {
       // Normalize sensor input
       inputs[i] = map(record, 0, SIGHT, 1, 0);
 
-      // Visualize sensor rays
+      // Visualize sensor rays (commented out for performance)
       if (closest) {
         stroke(255, 100, 100);  // Red color for sensor rays
         line(this.pos.x, this.pos.y, closest.x, closest.y);
