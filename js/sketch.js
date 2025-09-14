@@ -1,7 +1,9 @@
-import { Boundary, Obstacle } from './boundary.js';
-import { Particle, pldistance } from './particle.js';
-import { NeuralNetwork } from './nn.js';
-import { nextGeneration } from './ga.js'; // Import nextGeneration
+import { Boundary, Obstacle } from "./boundary.js";
+import { Particle, pldistance } from "./particle.js";
+import { NeuralNetwork } from "./nn.js";
+import { nextGeneration } from "./ga.js"; // Import nextGeneration
+import { TrainingDashboard } from "./dashboard.js"; // Import TrainingDashboard
+import { contentLoader } from "./contentLoader.js"; // Import content loader
 import {
   TOTAL,
   // MUTATION_RATE, // No longer needed here, used in Particle
@@ -12,8 +14,8 @@ import {
   maxFitness,
   simulationAreaWidth,
   viewAreaWidth,
-  trackheight
-} from './config.js';
+  trackheight,
+} from "./config.js";
 
 /**
  * Autonomous Car Simulation with Genetic Algorithm
@@ -24,52 +26,60 @@ import {
  */
 
 // Global variables (module-scoped, managed by sketch.js)
-let toggle_value = false;   // Toggle for dynamic/static obstacles
-let obstacleNo = 20;        // Number of obstacles
+let toggle_value = false; // Toggle for dynamic/static obstacles
+let obstacleNo = 20; // Number of obstacles
 
-let generationCount = 0;    // Current generation number
-let bestP;                  // Best performing particle
-let allTimeBestLaps = 0;    // New: All-time best laps completed
+let generationCount = 0; // Current generation number
+let bestP; // Best performing particle
+let allTimeBestLaps = 0; // New: All-time best laps completed
 
-let walls = [];             // Track boundary walls
-let obstacles = [];         // Dynamic obstacles
-let cp_points = [];         // Checkpoint points for obstacle movement
+let walls = []; // Track boundary walls
+let obstacles = []; // Dynamic obstacles
+let cp_points = []; // Checkpoint points for obstacle movement
 
-let trained_model;          // Loaded trained model
+let trained_model; // Loaded trained model
 
-let agents = [];            // Current generation of cars
-let savedagents = [];       // Previous generation (for genetic algorithm)
+let agents = []; // Current generation of cars
+let savedagents = []; // Previous generation (for genetic algorithm)
 
-let start, end;             // Start and end points of the track
+let start, end; // Start and end points of the track
 
-let speedSlider;            // Slider to control simulation speed
+let speedSlider; // Slider to control simulation speed
 
-let inside = [];            // Inner track boundary points
-let outside = [];           // Outer track boundary points
-let checkpoints = [];       // Track checkpoints
+let inside = []; // Inner track boundary points
+let outside = []; // Outer track boundary points
+let checkpoints = []; // Track checkpoints
 
-let changeMap = false;      // Flag to trigger track regeneration
+let changeMap = false; // Flag to trigger track regeneration
 
 let currentTrackPresetIndex = 0; // Index for cycling through track presets
 let loadedModel = null; // To store the raw tf.Sequential model loaded from persistence
+
+// Dashboard instance for training analytics
+let dashboard = null;
 
 /**
  * Save the current simulation state to local storage and IndexedDB.
  * @param {NeuralNetwork} [brainToSave=null] - An optional NeuralNetwork instance to save.
  * @param {number} [genCount=generationCount] - The generation count to save.
  */
-async function saveSimulationState(brainToSave = null, genCount = generationCount) {
+async function saveSimulationState(
+  brainToSave = null,
+  genCount = generationCount,
+) {
   console.log("Saving simulation state...");
-  localStorage.setItem('generationCount', genCount);
-  localStorage.setItem('currentTrackPresetIndex', currentTrackPresetIndex);
-  localStorage.setItem('allTimeBestLaps', allTimeBestLaps); // New: Save allTimeBestLaps
+  localStorage.setItem("generationCount", genCount);
+  localStorage.setItem("currentTrackPresetIndex", currentTrackPresetIndex);
+  localStorage.setItem("allTimeBestLaps", allTimeBestLaps); // New: Save allTimeBestLaps
 
   // Use the provided brainToSave, or fall back to bestP's brain if available
   const brainToUse = brainToSave || (bestP ? bestP.brain : null);
 
   if (brainToUse && brainToUse.model) {
     try {
-      await brainToUse.model.save('indexeddb://best-car-model', { includeOptimizer: false });
+      await brainToUse.model.save("indexeddb://best-car-model", {
+        includeOptimizer: false,
+      });
       console.log("Best model saved to IndexedDB.");
     } catch (error) {
       console.error("Failed to save model to IndexedDB:", error);
@@ -85,39 +95,45 @@ async function saveSimulationState(brainToSave = null, genCount = generationCoun
  */
 async function loadSimulationState() {
   console.log("Loading simulation state...");
-  const storedGenerationCount = localStorage.getItem('generationCount');
+  const storedGenerationCount = localStorage.getItem("generationCount");
   if (storedGenerationCount) {
     generationCount = parseInt(storedGenerationCount, 10);
     console.log("Loaded generation count:", generationCount);
   }
 
-  const storedTrackPresetIndex = localStorage.getItem('currentTrackPresetIndex');
+  const storedTrackPresetIndex = localStorage.getItem(
+    "currentTrackPresetIndex",
+  );
   if (storedTrackPresetIndex) {
     currentTrackPresetIndex = parseInt(storedTrackPresetIndex, 10);
     console.log("Loaded track preset index:", currentTrackPresetIndex);
   }
 
-  const storedAllTimeBestLaps = localStorage.getItem('allTimeBestLaps'); // New: Load allTimeBestLaps
+  const storedAllTimeBestLaps = localStorage.getItem("allTimeBestLaps"); // New: Load allTimeBestLaps
   if (storedAllTimeBestLaps) {
     allTimeBestLaps = parseInt(storedAllTimeBestLaps, 10);
     console.log("Loaded all-time best laps:", allTimeBestLaps);
   }
 
   try {
-    const model = await tf.loadLayersModel('indexeddb://best-car-model');
+    const model = await tf.loadLayersModel("indexeddb://best-car-model");
     if (model) {
       // Explicitly compile the model with a dummy optimizer to satisfy TF.js internal checks.
       // This is a workaround if TF.js expects an optimizer even for non-training models.
       model.compile({
         optimizer: tf.train.adam(), // Use a dummy optimizer
-        loss: 'meanSquaredError'    // Use a dummy loss
+        loss: "meanSquaredError", // Use a dummy loss
       });
       loadedModel = model; // Store the raw tf.Sequential model
       console.log("Loaded best model from IndexedDB.");
     }
   } catch (error) {
-    console.log("No saved model found in IndexedDB or failed to load:", error.message);
-    if (loadedModel) { // Ensure any partially loaded model is disposed if error occurs
+    console.log(
+      "No saved model found in IndexedDB or failed to load:",
+      error.message,
+    );
+    if (loadedModel) {
+      // Ensure any partially loaded model is disposed if error occurs
       loadedModel.dispose();
     }
     loadedModel = null; // Ensure it's null if loading fails
@@ -187,8 +203,8 @@ function buildTrack() {
     let ob = new Obstacle(x, y);
 
     let cp_data = {
-      "p1": p1,
-      "p2": p2
+      p1: p1,
+      p2: p2,
     };
 
     cp_points.push(cp_data);
@@ -200,7 +216,8 @@ function buildTrack() {
   end = checkpoints[checkpoints.length - 1].midpoint();
 
   // Advance to the next track preset for the next generation
-  currentTrackPresetIndex = (currentTrackPresetIndex + 1) % TRACK_PRESETS.length;
+  currentTrackPresetIndex =
+    (currentTrackPresetIndex + 1) % TRACK_PRESETS.length;
 }
 
 /**
@@ -212,28 +229,31 @@ async function callNextGeneration() {
     savedagents,
     generationCount,
     start, // Pass start position for new particles
-    saveSimulationState // Pass the save state callback
+    saveSimulationState, // Pass the save state callback
   );
   agents = result.newAgents;
   savedagents = result.newSavedAgents;
   generationCount = result.newGenerationCount;
 }
 
-
 /**
  * Setup function - runs once at the beginning
  */
-window.setup = async function() {
+window.setup = async function () {
   // Create canvas and append it to the simulation-canvas div
   let canvas = createCanvas(simulationAreaWidth + viewAreaWidth, trackheight); // Expanded canvas width
-  canvas.parent('simulation-canvas');
+  canvas.parent("simulation-canvas");
 
-  tf.setBackend('cpu');
+  tf.setBackend("cpu");
 
   // Create speed control slider and append it to its container
   speedSlider = createSlider(1, 10, 1);
-  speedSlider.parent('speed-slider-container');
-  speedSlider.class('p5js-slider'); // Add a class for styling
+  speedSlider.parent("speed-slider-container");
+  speedSlider.class("p5js-slider"); // Add a class for styling
+
+  // Initialize training dashboard
+  dashboard = new TrainingDashboard();
+  window.dashboardInstance = dashboard; // Make it globally accessible for HTML onclick handlers
 
   await loadSimulationState(); // Load state after slider is created
 
@@ -241,7 +261,8 @@ window.setup = async function() {
 
   // Create initial population of agents
   for (let i = 0; i < TOTAL; i++) {
-    if (i === 0 && loadedModel) { // Use loaded model for the first agent if available
+    if (i === 0 && loadedModel) {
+      // Use loaded model for the first agent if available
       agents[i] = new Particle(loadedModel, start); // Pass the raw tf.Sequential model
     } else {
       agents[i] = new Particle(null, start); // Pass null for a new random brain
@@ -253,12 +274,12 @@ window.setup = async function() {
     loadedModel.dispose();
     loadedModel = null; // Clear reference
   }
-}
+};
 
 /**
  * Toggle button for dynamic/static obstacles
  */
-window.toggle_btn = function() {
+window.toggle_btn = function () {
   toggle_value = !toggle_value;
   const btn = document.getElementById("btn_toggle");
   if (toggle_value) {
@@ -266,43 +287,47 @@ window.toggle_btn = function() {
   } else {
     btn.innerHTML = "Dynamic";
   }
-}
+};
 
 /**
  * Load a trained model from user files
  */
-window.load_model = async function() {
-  const uploadJSONInput = document.getElementById('upload-json');
-  const uploadWeightsInput = document.getElementById('upload-weights');
+window.load_model = async function () {
+  const uploadJSONInput = document.getElementById("upload-json");
+  const uploadWeightsInput = document.getElementById("upload-weights");
   if (uploadJSONInput.files.length > 0 && uploadWeightsInput.files.length > 0) {
     trained_model = await tf.loadLayersModel(
-      tf.io.browserFiles([uploadJSONInput.files[0], uploadWeightsInput.files[0]])
+      tf.io.browserFiles([
+        uploadJSONInput.files[0],
+        uploadWeightsInput.files[0],
+      ]),
     );
     console.log("Model loaded successfully:", trained_model);
   } else {
     console.warn("Please select both JSON and weights files to load a model.");
   }
-}
+};
 
 /**
  * Save the best performing model
  */
-window.save_model = function() {
-  if (bestP) { // Only save if bestP is defined
+window.save_model = function () {
+  if (bestP) {
+    // Only save if bestP is defined
     bestP.save();
   } else {
     console.warn("No best particle to save yet.");
   }
-}
+};
 
 /**
  * Change the number of obstacles based on user input
  */
-window.change_obs_no = function() {
-  const inputValue = int(document.getElementById('obs_no').value);
+window.change_obs_no = function () {
+  const inputValue = int(document.getElementById("obs_no").value);
   if (Number.isNaN(inputValue) || inputValue < 0) {
     obstacleNo = 20;
-    document.getElementById('obs_no').value = 20; // Reset input field
+    document.getElementById("obs_no").value = 20; // Reset input field
     console.log("Invalid input, using default value of 20");
   } else {
     obstacleNo = inputValue;
@@ -311,63 +336,194 @@ window.change_obs_no = function() {
   // Rebuild track with new obstacle count
   buildTrack();
   callNextGeneration(); // Start a new generation with the new track/obstacles
-}
+};
 
 /**
  * Toggles the visibility of the settings panel.
  */
-window.toggleSettingsPanel = function() {
-  const settingsPanel = document.getElementById('settings-panel');
-  const aboutPanel = document.getElementById('about-panel');
-  settingsPanel.classList.toggle('hidden');
+window.toggleSettingsPanel = function () {
+  const settingsPanel = document.getElementById("settings-panel");
+  const aboutPanel = document.getElementById("about-panel");
+  settingsPanel.classList.toggle("hidden");
   // Ensure about panel is hidden when settings panel is shown
-  if (!settingsPanel.classList.contains('hidden')) {
-    aboutPanel.classList.add('hidden');
+  if (!settingsPanel.classList.contains("hidden")) {
+    aboutPanel.classList.add("hidden");
   }
-}
+};
 
 /**
- * Toggles the visibility of the about panel.
+ * Toggles the visibility of the about panel and loads content if needed.
  */
-window.toggleAboutPanel = function() {
-  const aboutPanel = document.getElementById('about-panel');
-  const settingsPanel = document.getElementById('settings-panel');
-  aboutPanel.classList.toggle('hidden');
+window.toggleAboutPanel = async function () {
+  const aboutPanel = document.getElementById("about-panel");
+  const settingsPanel = document.getElementById("settings-panel");
+  const aboutContent = document.getElementById("about-content");
+
+  aboutPanel.classList.toggle("hidden");
+
   // Ensure settings panel is hidden when about panel is shown
-  if (!aboutPanel.classList.contains('hidden')) {
-    settingsPanel.classList.add('hidden');
+  if (!aboutPanel.classList.contains("hidden")) {
+    settingsPanel.classList.add("hidden");
+
+    // Load about content if not already loaded
+    if (!aboutContent.classList.contains("content-loaded")) {
+      try {
+        await contentLoader.loadIntoElement("ABOUT.md", "#about-content", {
+          isMarkdown: true,
+          useCache: true,
+          loadingText: "Loading about content...",
+          errorText: getFallbackAboutContent(),
+        });
+      } catch (error) {
+        console.error("Failed to load about content:", error);
+        // Provide fallback content if ABOUT.md cannot be loaded
+        aboutContent.innerHTML = getFallbackAboutContent();
+        aboutContent.classList.add("content-error");
+      }
+    }
   }
-}
+};
 
 /**
  * Toggles between light and dark themes.
  */
-window.toggleTheme = function() {
-  document.body.classList.toggle('dark-theme');
+window.toggleTheme = function () {
+  document.body.classList.toggle("dark-theme");
+};
+
+/**
+ * Refresh the about content by reloading it from ABOUT.md
+ */
+window.refreshAboutContent = async function () {
+  const aboutContent = document.getElementById("about-content");
+
+  if (aboutContent) {
+    try {
+      // Clear the content-loaded class to force reload
+      aboutContent.classList.remove("content-loaded");
+
+      await contentLoader.loadIntoElement("ABOUT.md", "#about-content", {
+        isMarkdown: true,
+        useCache: false, // Force fresh load
+        loadingText: "Refreshing content...",
+        errorText:
+          "Failed to refresh about content. Please check that ABOUT.md exists.",
+      });
+
+      console.log("About content refreshed successfully");
+    } catch (error) {
+      console.error("Failed to refresh about content:", error);
+    }
+  }
+};
+
+/**
+ * Provides fallback content when ABOUT.md cannot be loaded
+ * @returns {string} HTML content for about panel
+ */
+function getFallbackAboutContent() {
+  return `
+    <div class="fallback-content">
+      <h2>About This Simulation</h2>
+      <p>This project simulates autonomous cars learning to navigate a track using neural networks and a genetic algorithm.</p>
+
+      <h3>Key Features:</h3>
+      <ul>
+        <li>Neural network "brains" control car movement and decision-making</li>
+        <li>Genetic algorithm evolves better-performing cars over generations</li>
+        <li>Real-time visualization of car sensors and 3D-like perspective view</li>
+        <li>Comprehensive training analytics dashboard with performance charts</li>
+        <li>Procedurally generated racetracks with dynamic obstacles</li>
+      </ul>
+
+      <h3>Controls:</h3>
+      <ul>
+        <li><strong>Settings Panel:</strong> Configure obstacles, simulation speed, and model management</li>
+        <li><strong>Analytics Dashboard:</strong> View detailed training progress and performance metrics</li>
+        <li><strong>Theme Toggle:</strong> Switch between light and dark interface themes</li>
+      </ul>
+
+      <p><em>Note: Full documentation should be loaded from ABOUT.md. If you're seeing this message,
+      there may be a network issue or the file is missing.</em></p>
+
+      <p>For complete documentation and development information, please check the project repository.</p>
+    </div>
+  `;
 }
 
 /**
  * Updates the simulation information displayed in the HTML info bar.
  */
 function updateSimulationInfo() {
-  document.getElementById('generation-info').innerText = 'Generation: ' + generationCount;
+  document.getElementById("generation-info").innerText =
+    "Generation: " + generationCount;
   if (bestP) {
-    document.getElementById('speed-info').innerText = 'Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h';
-    document.getElementById('distance-info').innerText = 'Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m";
-    document.getElementById('current-laps-info').innerText = 'Current Best Laps: ' + bestP.lapsCompleted; // New: Current best laps
+    document.getElementById("speed-info").innerText =
+      "Speed: " +
+      map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) +
+      " Km/h";
+    document.getElementById("distance-info").innerText =
+      "Distance from obstacle: " + bestP.closeDistFromOb.toFixed(3) + " m";
+    document.getElementById("current-laps-info").innerText =
+      "Current Best Laps: " + bestP.lapsCompleted; // New: Current best laps
   } else {
-    document.getElementById('speed-info').innerText = 'Speed: 0.00 Km/h';
-    document.getElementById('distance-info').innerText = 'Distance from obstacle: 0.000 m';
-    document.getElementById('current-laps-info').innerText = 'Current Best Laps: 0'; // New: Current best laps
+    document.getElementById("speed-info").innerText = "Speed: 0.00 Km/h";
+    document.getElementById("distance-info").innerText =
+      "Distance from obstacle: 0.000 m";
+    document.getElementById("current-laps-info").innerText =
+      "Current Best Laps: 0"; // New: Current best laps
   }
-  document.getElementById('all-time-laps-info').innerText = 'All-Time Best Laps: ' + allTimeBestLaps; // New: All-time best laps
+  document.getElementById("all-time-laps-info").innerText =
+    "All-Time Best Laps: " + allTimeBestLaps; // New: All-time best laps
 }
 
+/**
+ * Updates the training dashboard with current generation statistics
+ */
+function updateDashboard() {
+  if (!dashboard || agents.length === 0) return;
+
+  // Calculate statistics for current generation
+  let totalFitness = 0;
+  let totalSpeed = 0;
+  let aliveCount = 0;
+  let maxFitnessCurrent = 0;
+  let maxLapsCurrent = 0;
+
+  for (let agent of agents) {
+    if (!agent.dead && !agent.finished) {
+      aliveCount++;
+    }
+    totalFitness += agent.fitness;
+    totalSpeed += map(agent.vel.mag(), 0, 5, 0, 180);
+
+    if (agent.fitness > maxFitnessCurrent) {
+      maxFitnessCurrent = agent.fitness;
+    }
+    if (agent.lapsCompleted > maxLapsCurrent) {
+      maxLapsCurrent = agent.lapsCompleted;
+    }
+  }
+
+  const avgFitness = totalFitness / agents.length;
+  const avgSpeed = totalSpeed / agents.length;
+
+  // Update dashboard with current data
+  dashboard.updateStats({
+    generation: generationCount,
+    bestFitness: maxFitnessCurrent,
+    avgFitness: avgFitness,
+    bestLaps: maxLapsCurrent,
+    aliveCount: aliveCount,
+    avgSpeed: avgSpeed,
+    agents: agents,
+  });
+}
 
 /**
  * Main draw loop - runs continuously
  */
-window.draw = function() {
+window.draw = function () {
   const cycles = speedSlider.value();
   background(0);
 
@@ -453,8 +609,8 @@ window.draw = function() {
 
     // Render 3D-like view from best agent's perspective
     let data = bestP.renderView(walls, obstacles);
-    let scene = data['scene'];
-    let colors = data['colors'];
+    let scene = data["scene"];
+    let colors = data["colors"];
     const w = viewAreaWidth / scene.length; // Use viewAreaWidth for scaling
 
     push();
@@ -480,7 +636,13 @@ window.draw = function() {
     }
     pop();
   }
-  
+
   // Update HTML info bar
   updateSimulationInfo();
-}
+
+  // Update dashboard with analytics (throttled to avoid performance impact)
+  if (frameCount % 30 === 0) {
+    // Update dashboard every 30 frames (~0.5 seconds)
+    updateDashboard();
+  }
+};
