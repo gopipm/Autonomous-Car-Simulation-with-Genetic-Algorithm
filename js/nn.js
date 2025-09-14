@@ -3,27 +3,38 @@
  * Uses TensorFlow.js to create and manage a neural network
  * that controls the car's steering and speed decisions
  */
-class NeuralNetwork {
+export class NeuralNetwork {
   /**
    * Constructor for the NeuralNetwork class
-   * @param {tf.Sequential|number} a - Either a pre-trained model or the number of input nodes
-   * @param {number} b - Either the number of hidden nodes or the input_nodes value for a pre-trained model
-   * @param {number} c - Either the number of output nodes or the hidden_nodes value for a pre-trained model
-   * @param {number} d - The output_nodes value for a pre-trained model (optional)
+   * @param {tf.Sequential|number} input_nodes_or_model - Either a pre-trained tf.Sequential model or the number of input nodes
+   * @param {number} hidden_nodes - If input_nodes_or_model is a model, this is the input_nodes count. Otherwise, it's the hidden_nodes count.
+   * @param {number} output_nodes - If input_nodes_or_model is a model, this is the hidden_nodes count. Otherwise, it's the output_nodes count.
+   * @param {number} [actual_output_nodes] - If input_nodes_or_model is a model, this is the actual output_nodes count.
    */
-  constructor(a, b, c, d) {
-    if (a instanceof tf.Sequential) {
-      // Loading a pre-trained model
-      this.model = a;
-      this.input_nodes = b;
-      this.hidden_nodes = c;
-      this.output_nodes = d;
+  constructor(input_nodes_or_model, hidden_nodes, output_nodes, actual_output_nodes) {
+    // Determine network dimensions
+    if (input_nodes_or_model instanceof tf.Sequential) {
+      this.input_nodes = hidden_nodes;
+      this.hidden_nodes = output_nodes;
+      this.output_nodes = actual_output_nodes;
     } else {
-      // Creating a new model
-      this.input_nodes = a;
-      this.hidden_nodes = b;
-      this.output_nodes = c;
-      this.model = this.createModel();
+      this.input_nodes = input_nodes_or_model;
+      this.hidden_nodes = hidden_nodes;
+      this.output_nodes = output_nodes;
+    }
+
+    // Always create a new model for this instance
+    this.model = this.createModel();
+
+    // If a tf.Sequential model was provided, copy its weights
+    if (input_nodes_or_model instanceof tf.Sequential) {
+      tf.tidy(() => {
+        const sourceModel = input_nodes_or_model;
+        const sourceWeights = sourceModel.getWeights();
+        const newWeights = sourceWeights.map(w => w.clone()); // Clone each weight tensor
+        this.model.setWeights(newWeights);
+        newWeights.forEach(w => w.dispose()); // Explicitly dispose cloned weights after setting
+      });
     }
   }
 
@@ -42,19 +53,24 @@ class NeuralNetwork {
    */
   copy() {
     return tf.tidy(() => {
-      const modelCopy = this.createModel();
+      // Create a new NeuralNetwork instance. Its constructor will create its own empty model.
+      const newNN = new NeuralNetwork(this.input_nodes, this.hidden_nodes, this.output_nodes);
+
+      // Get weights from *this* NeuralNetwork's model.
       const weights = this.model.getWeights();
-      const weightCopies = [];
-      for (let i = 0; i < weights.length; i++) {
-        weightCopies[i] = weights[i].clone();
-      }
-      modelCopy.setWeights(weightCopies);
-      return new NeuralNetwork(
-        modelCopy,
-        this.input_nodes,
-        this.hidden_nodes,
-        this.output_nodes
-      );
+      
+      // Clone the weights. These are new tensors.
+      const weightCopies = weights.map(w => w.clone());
+
+      // Set the cloned weights to the *new* NeuralNetwork's internal model.
+      // newNN.model now takes ownership of these weightCopies.
+      newNN.model.setWeights(weightCopies);
+
+      // The original 'weights' (references) and the 'weightCopies' (cloned tensors)
+      // are now either owned by newNN.model or are temporary and will be disposed by tf.tidy.
+      // No explicit dispose of weightCopies here, as newNN.model owns them.
+
+      return newNN;
     });
   }
 

@@ -1,8 +1,10 @@
+import { SIGHT } from './config.js';
+
 /**
  * Ray class for sensor rays used in obstacle detection
  * Rays are cast from the particle's position in a specific direction
  */
-class Ray {
+export class Ray {
   /**
    * Constructor for the Ray class
    * @param {p5.Vector} pos - The starting position of the ray

@@ -11,6 +11,8 @@ The simulation features:
 - Genetic algorithm for evolving better-performing cars over generations
 - Real-time visualization of car sensors (LiDAR-like rays)
 - 3D-like visualization of the car's perspective
+- **New:** A dedicated "About" panel providing detailed information about the simulation, its features, and controls.
+- **New:** A clear information bar above the simulation canvas displaying real-time generation, speed, and distance from obstacles.
 
 ## Files Structure
 
@@ -24,6 +26,8 @@ The simulation features:
   - `sketch.js` - Main p5.js sketch with setup and draw functions
   - `loadbinary.js` - Binary file loading utilities
   - `p5.collide2d.js` - Collision detection library
+- `css/` - Directory containing stylesheet files
+  - `style.css` - Main stylesheet for the application
 - `ml-data/` - Pre-trained models
 - `model.json` - Base model structure
 - `git-commands.sh` - Git helper script
@@ -46,6 +50,9 @@ The simulation features:
 - **Speed Slider**: Control simulation speed
 - **Save Best**: Save the best performing car's neural network
 - **Load Model**: Load a pre-trained model
+- **Settings**: Toggle visibility of the simulation settings panel.
+- **About**: Toggle visibility of the about information panel.
+- **Toggle Theme**: Switch between light and dark UI themes.
 
 ## Version Control
 
@@ -136,19 +143,19 @@ The code has been refactored to improve:
 - [ ] Add multiple car types with different capabilities
 - [ ] Implement weather conditions (rain, fog) affecting sensors
 - [ ] Add different obstacle behaviors (moving in patterns, varying speeds)
-- [ ] Create a dashboard to visualize training statistics
+- [*] Create a dashboard to visualize training statistics
 - [ ] Add manual driving mode for collecting training data
 
 ### UI/UX Improvements
 - [ ] Improve visualization of car sensors and decision-making process
 - [ ] Add replay functionality for best performing cars
-- [ ] Implement a proper settings panel instead of scattered controls
+- [*] Implement a proper settings panel instead of scattered controls
 - [ ] Add graph visualization of fitness improvement over generations
 - [ ] Create a start screen with instructions and options
 
 ### Code Quality
 - [ ] Refactor code into ES6 modules for better organization
-- [ ] Add comprehensive comments and documentation
+- [*] Add comprehensive comments and documentation
 - [ ] Implement unit tests for core functions
 - [ ] Optimize raycasting algorithm for better performance
 - [ ] Add error handling and validation for user inputs

@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.dom.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.1.0/dist/tf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
     <title>Autonomous Car Simulation</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
   </head>
   <body>
     <div class="container">
@@ -106,18 +106,24 @@
         <span id="generation-info">Generation: 0</span>
         <span id="speed-info">Speed: 0.00 Km/h</span>
         <span id="distance-info">Distance from obstacle: 0.000 m</span>
+        <span id="current-laps-info">Current Best Laps: 0</span>
+        <span id="all-time-laps-info">All-Time Best Laps: 0</span>
       </div>
 
       <main id="simulation-canvas"></main>
     </div>
 
-    <script src="js/nn.js"></script>
-    <script src="js/ga.js"></script>
-    <script src="js/ray.js"></script>
+    <!-- Global libraries (must load before modules) -->
     <script src="js/p5.collide2d.js"></script>
-    <script src="js/boundary.js"></script>
-    <script src="js/particle.js"></script>
-    <script src="js/sketch.js"></script>
     <script src="js/loadbinary.js"></script>
+
+    <!-- Our custom ES6 modules -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/nn.js"></script>
+    <script type="module" src="js/ray.js"></script>
+    <script type="module" src="js/boundary.js"></script>
+    <script type="module" src="js/particle.js"></script>
+    <script type="module" src="js/ga.js"></script>
+    <script type="module" src="js/sketch.js"></script>
   </body>
 </html>

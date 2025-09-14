@@ -1,3 +1,7 @@
+import { Ray } from './ray.js';
+import { NeuralNetwork } from './nn.js';
+import { SIGHT, LIFESPAN, MUTATION_RATE } from './config.js';
+
 /**
  * Calculate the perpendicular distance from a point to a line
  * @param {p5.Vector} p1 - First point of the line
@@ -6,7 +10,7 @@
  * @param {number} y - Y coordinate of the point
  * @returns {number} The perpendicular distance
  */
-function pldistance(p1, p2, x, y) {
+export function pldistance(p1, p2, x, y) {
   const num = abs((p2.y - p1.y) * x - (p2.x - p1.x) * y + p2.x * p1.y - p2.y * p1.x);
   const den = p5.Vector.dist(p1, p2);
   return num / den;
@@ -16,19 +20,21 @@ function pldistance(p1, p2, x, y) {
  * Particle class representing a car in the simulation
  * Each particle has a neural network brain that controls its movement
  */
-class Particle {
+export class Particle {
   /**
    * Constructor for the Particle class
-   * @param {NeuralNetwork} brain - Optional pre-trained neural network
+   * @param {NeuralNetwork|tf.Sequential} brain - Optional pre-trained neural network or raw tf.Sequential model
+   * @param {p5.Vector} startPos - The starting position for the particle
    */
-  constructor(brain) {
+  constructor(brain, startPos) {
     // Fitness and state tracking
     this.fitness = 0;
     this.dead = false;
     this.finished = false;
+    this.lapsCompleted = 0; // New: Track laps completed
     
     // Physics properties
-    this.pos = createVector(start.x, start.y);
+    this.pos = startPos.copy(); // Use the passed startPos
     this.vel = createVector();
     this.acc = createVector();
     this.maxspeed = 5;
@@ -53,9 +59,13 @@ class Particle {
     }
     
     // Initialize brain (neural network)
-    if (brain) {
+    if (brain instanceof NeuralNetwork) { // If it's already a NeuralNetwork instance
       this.brain = brain.copy();
-    } else {
+    } else if (brain instanceof tf.Sequential) { // If it's a raw tf.Sequential model
+      // Create a new NeuralNetwork instance from the loaded model
+      // Assuming input_nodes, hidden_nodes, output_nodes are fixed for the loaded model
+      this.brain = new NeuralNetwork(brain, this.rays.length, this.rays.length * 2, 2);
+    } else { // Create a new random brain
       this.brain = new NeuralNetwork(this.rays.length, this.rays.length * 2, 2);
     }
   }
@@ -131,6 +141,10 @@ class Particle {
         this.index = (this.index + 1) % checkpoints.length;
         this.fitness++;
         this.counter = 0;
+        // New: Increment lapsCompleted if a full cycle of checkpoints is completed
+        if (this.index === 0) {
+          this.lapsCompleted++;
+        }
       }
     }
   }

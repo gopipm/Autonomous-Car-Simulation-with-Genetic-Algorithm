@@ -2,7 +2,7 @@
  * Boundary class representing track boundaries
  * Each boundary is a line segment between two points
  */
-class Boundary {
+export class Boundary {
   /**
    * Constructor for the Boundary class
    * @param {number} x1 - X coordinate of the first point
@@ -39,7 +39,7 @@ class Boundary {
  * Obstacle class representing dynamic obstacles in the simulation
  * Obstacles move along the track and pose challenges for the cars
  */
-class Obstacle {
+export class Obstacle {
   /**
    * Constructor for the Obstacle class
    * @param {number} x - X coordinate of the obstacle

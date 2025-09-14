@@ -1,3 +1,20 @@
+import { Boundary, Obstacle } from './boundary.js';
+import { Particle, pldistance } from './particle.js';
+import { NeuralNetwork } from './nn.js';
+import { nextGeneration } from './ga.js'; // Import nextGeneration
+import {
+  TOTAL,
+  // MUTATION_RATE, // No longer needed here, used in Particle
+  LIFESPAN,
+  SIGHT,
+  // ELITISM_COUNT, // No longer needed here, used in ga.js
+  TRACK_PRESETS,
+  maxFitness,
+  simulationAreaWidth,
+  viewAreaWidth,
+  trackheight
+} from './config.js';
+
 /**
  * Autonomous Car Simulation with Genetic Algorithm
  *
@@ -6,31 +23,16 @@
  * static and dynamic obstacles.
  */
 
-// Configuration constants
-const TOTAL = 100;          // Number of cars in each generation
-const MUTATION_RATE = 0.2;  // Probability of mutation for each weight
-const LIFESPAN = 30;        // Maximum frames a car can live without progress
-const SIGHT = 80;           // Sensor range in pixels
-const ELITISM_COUNT = 1;    // Number of top agents to carry over to the next generation
-
-// Track generation presets for varied layouts
-const TRACK_PRESETS = [
-  { noiseMax: 2, pathWidth: 70 },  // Default: moderately curvy, standard width
-  { noiseMax: 3, pathWidth: 60 },  // More curvy, slightly narrower
-  { noiseMax: 1.5, pathWidth: 80 },// Less curvy, wider
-  { noiseMax: 2.5, pathWidth: 50 } // Moderately curvy, narrow
-];
-
-// Global variables
+// Global variables (module-scoped, managed by sketch.js)
 let toggle_value = false;   // Toggle for dynamic/static obstacles
 let obstacleNo = 20;        // Number of obstacles
 
 let generationCount = 0;    // Current generation number
 let bestP;                  // Best performing particle
+let allTimeBestLaps = 0;    // New: All-time best laps completed
 
 let walls = [];             // Track boundary walls
-let ray;                    // Sensor ray (unused?)
-
+let obstacles = [];         // Dynamic obstacles
 let cp_points = [];         // Checkpoint points for obstacle movement
 
 let trained_model;          // Loaded trained model
@@ -46,24 +48,21 @@ let inside = [];            // Inner track boundary points
 let outside = [];           // Outer track boundary points
 let checkpoints = [];       // Track checkpoints
 
-const maxFitness = 500;     // Fitness threshold to trigger new generation
 let changeMap = false;      // Flag to trigger track regeneration
 
-const simulationAreaWidth = 1000; // Width of the main simulation track area
-const viewAreaWidth = 350;        // Width of the 3D-like ray casting view (increased from 300)
-let trackheight = 800;            // Height of the entire canvas
-
 let currentTrackPresetIndex = 0; // Index for cycling through track presets
-let loadedBrain = null; // To store the brain loaded from persistence
+let loadedModel = null; // To store the raw tf.Sequential model loaded from persistence
 
 /**
  * Save the current simulation state to local storage and IndexedDB.
  * @param {NeuralNetwork} [brainToSave=null] - An optional NeuralNetwork instance to save.
+ * @param {number} [genCount=generationCount] - The generation count to save.
  */
-async function saveSimulationState(brainToSave = null) {
+async function saveSimulationState(brainToSave = null, genCount = generationCount) {
   console.log("Saving simulation state...");
-  localStorage.setItem('generationCount', generationCount);
+  localStorage.setItem('generationCount', genCount);
   localStorage.setItem('currentTrackPresetIndex', currentTrackPresetIndex);
+  localStorage.setItem('allTimeBestLaps', allTimeBestLaps); // New: Save allTimeBestLaps
 
   // Use the provided brainToSave, or fall back to bestP's brain if available
   const brainToUse = brainToSave || (bestP ? bestP.brain : null);
@@ -98,6 +97,12 @@ async function loadSimulationState() {
     console.log("Loaded track preset index:", currentTrackPresetIndex);
   }
 
+  const storedAllTimeBestLaps = localStorage.getItem('allTimeBestLaps'); // New: Load allTimeBestLaps
+  if (storedAllTimeBestLaps) {
+    allTimeBestLaps = parseInt(storedAllTimeBestLaps, 10);
+    console.log("Loaded all-time best laps:", allTimeBestLaps);
+  }
+
   try {
     const model = await tf.loadLayersModel('indexeddb://best-car-model');
     if (model) {
@@ -107,12 +112,15 @@ async function loadSimulationState() {
         optimizer: tf.train.adam(), // Use a dummy optimizer
         loss: 'meanSquaredError'    // Use a dummy loss
       });
-      loadedBrain = new NeuralNetwork(model, 13, 26, 2);
+      loadedModel = model; // Store the raw tf.Sequential model
       console.log("Loaded best model from IndexedDB.");
     }
   } catch (error) {
     console.log("No saved model found in IndexedDB or failed to load:", error.message);
-    loadedBrain = null; // Ensure it's null if loading fails
+    if (loadedModel) { // Ensure any partially loaded model is disposed if error occurs
+      loadedModel.dispose();
+    }
+    loadedModel = null; // Ensure it's null if loading fails
   }
 }
 
@@ -166,7 +174,7 @@ function buildTrack() {
   }
 
   // Create dynamic obstacles
-  obstacles = [];
+  obstacles = []; // Re-initialize obstacles array
   cp_points = [];
   for (let i = 0; i < obstacleNo; i++) {
     let index = int(random(5, checkpoints.length - 1));
@@ -196,9 +204,26 @@ function buildTrack() {
 }
 
 /**
+ * Wrapper function to call nextGeneration from ga.js and update sketch.js state.
+ */
+async function callNextGeneration() {
+  const result = await nextGeneration(
+    agents,
+    savedagents,
+    generationCount,
+    start, // Pass start position for new particles
+    saveSimulationState // Pass the save state callback
+  );
+  agents = result.newAgents;
+  savedagents = result.newSavedAgents;
+  generationCount = result.newGenerationCount;
+}
+
+
+/**
  * Setup function - runs once at the beginning
  */
-async function setup() { // Make setup async
+window.setup = async function() {
   // Create canvas and append it to the simulation-canvas div
   let canvas = createCanvas(simulationAreaWidth + viewAreaWidth, trackheight); // Expanded canvas width
   canvas.parent('simulation-canvas');
@@ -216,22 +241,24 @@ async function setup() { // Make setup async
 
   // Create initial population of agents
   for (let i = 0; i < TOTAL; i++) {
-    if (i === 0 && loadedBrain) { // Use loaded brain for the first agent if available
-      agents[i] = new Particle(loadedBrain);
-      // Dispose the loadedBrain after using it to create the first agent
-      // as the Particle constructor makes a copy.
-      loadedBrain.dispose();
-      loadedBrain = null; // Clear reference
+    if (i === 0 && loadedModel) { // Use loaded model for the first agent if available
+      agents[i] = new Particle(loadedModel, start); // Pass the raw tf.Sequential model
     } else {
-      agents[i] = new Particle();
+      agents[i] = new Particle(null, start); // Pass null for a new random brain
     }
+  }
+  // Dispose the loadedModel after all agents have been created from it
+  // as the Particle constructor makes a copy.
+  if (loadedModel) {
+    loadedModel.dispose();
+    loadedModel = null; // Clear reference
   }
 }
 
 /**
  * Toggle button for dynamic/static obstacles
  */
-function toggle_btn() {
+window.toggle_btn = function() {
   toggle_value = !toggle_value;
   const btn = document.getElementById("btn_toggle");
   if (toggle_value) {
@@ -244,7 +271,7 @@ function toggle_btn() {
 /**
  * Load a trained model from user files
  */
-async function load_model() {
+window.load_model = async function() {
   const uploadJSONInput = document.getElementById('upload-json');
   const uploadWeightsInput = document.getElementById('upload-weights');
   if (uploadJSONInput.files.length > 0 && uploadWeightsInput.files.length > 0) {
@@ -260,7 +287,7 @@ async function load_model() {
 /**
  * Save the best performing model
  */
-function save_model() {
+window.save_model = function() {
   if (bestP) { // Only save if bestP is defined
     bestP.save();
   } else {
@@ -271,7 +298,7 @@ function save_model() {
 /**
  * Change the number of obstacles based on user input
  */
-function change_obs_no() {
+window.change_obs_no = function() {
   const inputValue = int(document.getElementById('obs_no').value);
   if (Number.isNaN(inputValue) || inputValue < 0) {
     obstacleNo = 20;
@@ -283,13 +310,13 @@ function change_obs_no() {
   }
   // Rebuild track with new obstacle count
   buildTrack();
-  nextGeneration(); // Start a new generation with the new track/obstacles
+  callNextGeneration(); // Start a new generation with the new track/obstacles
 }
 
 /**
  * Toggles the visibility of the settings panel.
  */
-function toggleSettingsPanel() {
+window.toggleSettingsPanel = function() {
   const settingsPanel = document.getElementById('settings-panel');
   const aboutPanel = document.getElementById('about-panel');
   settingsPanel.classList.toggle('hidden');
@@ -302,7 +329,7 @@ function toggleSettingsPanel() {
 /**
  * Toggles the visibility of the about panel.
  */
-function toggleAboutPanel() {
+window.toggleAboutPanel = function() {
   const aboutPanel = document.getElementById('about-panel');
   const settingsPanel = document.getElementById('settings-panel');
   aboutPanel.classList.toggle('hidden');
@@ -315,7 +342,7 @@ function toggleAboutPanel() {
 /**
  * Toggles between light and dark themes.
  */
-function toggleTheme() {
+window.toggleTheme = function() {
   document.body.classList.toggle('dark-theme');
 }
 
@@ -327,22 +354,22 @@ function updateSimulationInfo() {
   if (bestP) {
     document.getElementById('speed-info').innerText = 'Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h';
     document.getElementById('distance-info').innerText = 'Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m";
+    document.getElementById('current-laps-info').innerText = 'Current Best Laps: ' + bestP.lapsCompleted; // New: Current best laps
   } else {
     document.getElementById('speed-info').innerText = 'Speed: 0.00 Km/h';
     document.getElementById('distance-info').innerText = 'Distance from obstacle: 0.000 m';
+    document.getElementById('current-laps-info').innerText = 'Current Best Laps: 0'; // New: Current best laps
   }
+  document.getElementById('all-time-laps-info').innerText = 'All-Time Best Laps: ' + allTimeBestLaps; // New: All-time best laps
 }
 
 
 /**
  * Main draw loop - runs continuously
  */
-function draw() {
+window.draw = function() {
   const cycles = speedSlider.value();
   background(0);
-
-  // Initialize bestP to null or the first agent if available
-  bestP = agents.length > 0 ? agents[0] : null;
 
   // Run simulation for multiple cycles per frame
   for (let n = 0; n < cycles; n++) {
@@ -352,12 +379,7 @@ function draw() {
       agent.check(checkpoints);
       agent.bounds();
       agent.update();
-      agent.show(); // Now all agents will be displayed
-
-      // Track best performing agent
-      if (bestP === null || agent.fitness > bestP.fitness) { // Handle initial null bestP
-        bestP = agent;
-      }
+      agent.show();
     }
 
     // Remove dead or finished agents
@@ -380,15 +402,30 @@ function draw() {
       }
 
       buildTrack();
-      nextGeneration();
+      callNextGeneration(); // Call the wrapper
       changeMap = false;
     }
 
     // Generate new population if all agents are dead
     if (agents.length === 0) {
       buildTrack();
-      nextGeneration();
+      callNextGeneration(); // Call the wrapper
     }
+  }
+
+  // Determine the best *active* agent for display *after* all simulation logic for the frame.
+  bestP = null;
+  let maxFitnessCurrent = -1;
+  for (let agent of agents) {
+    if (agent.fitness > maxFitnessCurrent) {
+      maxFitnessCurrent = agent.fitness;
+      bestP = agent;
+    }
+  }
+
+  // New: Update allTimeBestLaps if the current best particle has completed more laps
+  if (bestP && bestP.lapsCompleted > allTimeBestLaps) {
+    allTimeBestLaps = bestP.lapsCompleted;
   }
 
   // Display track elements
