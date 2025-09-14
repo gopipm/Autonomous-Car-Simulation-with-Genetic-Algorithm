@@ -7,9 +7,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.dom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.1.0/dist/tf.min.js"></script>
-    <title>Car test-1</title>
+    <title>Autonomous Car Simulation</title>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
+    <div class="container">
+      <header class="header">
+        <h1>Autonomous Car Simulation</h1>
+        <div class="header-controls">
+          <button id="toggle-settings-btn" onclick="toggleSettingsPanel()">Settings</button>
+          <button id="theme-toggle-btn" onclick="toggleTheme()">Toggle Theme</button>
+        </div>
+      </header>
+
+      <div id="settings-panel" class="settings-panel hidden">
+        <h2>Simulation Settings</h2>
+        <div class="setting-group">
+          <label for="btn_toggle">Obstacle Movement:</label>
+          <button id="btn_toggle" onclick="toggle_btn()">Dynamic</button>
+        </div>
+        <div class="setting-group">
+          <label for="obs_no">Number of Obstacles:</label>
+          <input type="number" id="obs_no" placeholder="e.g., 20" value="20">
+          <button onclick="change_obs_no()">Set</button>
+        </div>
+        <div class="setting-group">
+          <label>Simulation Speed:</label>
+          <div id="speed-slider-container"></div>
+        </div>
+        <div class="setting-group">
+          <label>Model Actions:</label>
+          <button onclick="save_model()">Save Best Model</button>
+          <div class="model-load-group">
+            <span>Load Model:</span>
+            <input type="file" id="upload-json" accept=".json">
+            <input type="file" id="upload-weights" accept=".bin">
+            <button onclick="load_model()">Load</button>
+          </div>
+        </div>
+      </div>
+
+      <main id="simulation-canvas"></main>
+    </div>
+
     <script src="js/nn.js"></script>
     <script src="js/ga.js"></script>
     <script src="js/ray.js"></script>
@@ -18,15 +58,5 @@
     <script src="js/particle.js"></script>
     <script src="js/sketch.js"></script>
     <script src="js/loadbinary.js"></script>
-    <br>
-    <button style="margin: 30px" id="btn_toggle" onclick="toggle_btn()">Dynamic</button>
-    <input type="number" id="obs_no" placeholder="enter upperbound">
-    <button style="margin: 30px" onclick="change_obs_no()">Done</button>
-    <button style="margin: 30px" onclick="save_model()">save_best</button>
-    JSON:
-    <input type="file" id="upload-json" placeholder="JSON">
-    Bin:
-    <input type="file" id="upload-weights" placeholder="Bin">
-    <button style="margin: 30px" onclick="load_model()">load</button>
   </body>
 </html>
