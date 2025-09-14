@@ -33,6 +33,7 @@ The simulation features:
 - `boundary.js` - Track boundary and obstacle classes
 - `ml-data/` - Pre-trained models
 - `model.json` - Base model structure
+- `git-commands.sh` - Git helper script
 
 ## Prerequisites
 
@@ -52,24 +53,6 @@ The simulation features:
 - **Speed Slider**: Control simulation speed
 - **Save Best**: Save the best performing car's neural network
 - **Load Model**: Load a pre-trained model
-
-## Technical Details
-
-### Neural Network Architecture
-- Input layer: 13 neurons (sensor readings)
-- Hidden layer: 26 neurons with sigmoid activation
-- Output layer: 2 neurons with sigmoid activation (steering angle and speed)
-
-### Genetic Algorithm Parameters
-- Population size: 100 cars
-- Mutation rate: 20%
-- Lifespan: 30 frames
-- Sensor range: 80 pixels
-
-### Sensors
-Cars have 13 sensors (rays) spread across a 130-degree field of view to detect:
-- Distance to track boundaries
-- Distance to dynamic obstacles
 
 ## Version Control
 
@@ -94,6 +77,41 @@ git commit -m "Description of changes"
 # View commit history
 git log
 ```
+
+### Git Helper Script
+
+A helper script `git-commands.sh` is included to make common Git operations easier:
+- Run `./git-commands.sh` and follow the prompts
+- Options include checking status, committing changes, viewing logs, and switching branches
+
+### Branching Strategy
+
+- `main` branch: Stable, working versions of the code
+- `development` branch: Active development branch for new features
+
+When working on new features:
+1. Switch to the development branch: `git checkout development`
+2. Make your changes
+3. Commit your changes
+4. When ready to release, merge to main: `git checkout main && git merge development`
+
+## Technical Details
+
+### Neural Network Architecture
+- Input layer: 13 neurons (sensor readings)
+- Hidden layer: 26 neurons with sigmoid activation
+- Output layer: 2 neurons with sigmoid activation (steering angle and speed)
+
+### Genetic Algorithm Parameters
+- Population size: 100 cars
+- Mutation rate: 20%
+- Lifespan: 30 frames
+- Sensor range: 80 pixels
+
+### Sensors
+Cars have 13 sensors (rays) spread across a 130-degree field of view to detect:
+- Distance to track boundaries
+- Distance to dynamic obstacles
 
 ## TODO / Improvements
 
