@@ -46,10 +46,10 @@ class Particle {
 
     // Initialize sensors
     for (let a = -65; a < 65; a += 1) {
-      this.view.push(new Ray(this.pos, radians(a)));
+      this.view.push(new Ray(this.pos.copy(), radians(a)));
     }
     for (let a = -65; a < 65; a += 10) {
-      this.rays.push(new Ray(this.pos, radians(a)));
+      this.rays.push(new Ray(this.pos.copy(), radians(a)));
     }
     
     // Initialize brain (neural network)
@@ -106,12 +106,14 @@ class Particle {
         this.dead = true;
       }
 
-      // Rotate sensors to match heading
+      // Update sensor positions and rotate to match heading
       for (let i = 0; i < this.view.length; i++) {
+        this.view[i].pos = this.pos.copy();
         this.view[i].rotate(this.vel.heading());
       }
 
       for (let i = 0; i < this.rays.length; i++) {
+        this.rays[i].pos = this.pos.copy();
         this.rays[i].rotate(this.vel.heading());
       }
     }
@@ -158,10 +160,13 @@ class Particle {
       
       // Check for obstacles
       let ob_point = ray.checkobstacle(obstacles);
-      if (ob_point && record > p5.Vector.dist(this.pos, ob_point.pos)) {
-        closest = ob_point.pos;
-        record = p5.Vector.dist(this.pos, ob_point.pos);
-        this.closeDistFromOb = record;
+      if (ob_point) {
+        let distance = p5.Vector.dist(this.pos, ob_point.pos);
+        if (distance < record) {
+          closest = ob_point.pos;
+          record = distance;
+          this.closeDistFromOb = record;
+        }
       }
       
       // Check for walls
@@ -186,8 +191,8 @@ class Particle {
 
       // Visualize sensor rays (commented out for performance)
       if (closest) {
-        // stroke(255);
-        // line(this.pos.x, this.pos.y, closest.x, closest.y);
+        stroke(255, 100, 100);  // Red color for sensor rays
+        line(this.pos.x, this.pos.y, closest.x, closest.y);
       }
     }
     
@@ -244,10 +249,13 @@ class Particle {
       
       // Check for obstacles
       let ob_point = ray.renderobstacle(obstacles);
-      if (ob_point && record > p5.Vector.dist(this.pos, ob_point.pos)) {
-        closest = ob_point.pos;
-        record = p5.Vector.dist(this.pos, ob_point.pos);
-        c = 1;
+      if (ob_point) {
+        let distance = p5.Vector.dist(this.pos, ob_point.pos);
+        if (distance < record) {
+          closest = ob_point.pos;
+          record = distance;
+          c = 1;
+        }
       }
       
       // Check for walls

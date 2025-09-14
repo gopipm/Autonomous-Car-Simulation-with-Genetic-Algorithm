@@ -50,8 +50,8 @@ class Ray {
    * @returns {Obstacle|null} The closest obstacle or null if none found
    */
   checkobstacle(obstacles) {
-    let p1 = this.pos;
-    let p2 = p5.Vector.add(this.pos, this.dir.mult(SIGHT));
+    let p1 = this.pos.copy();
+    let p2 = p5.Vector.add(this.pos.copy(), p5.Vector.mult(this.dir.copy(), SIGHT));
     let ob = null;
     let dis = Infinity;
     
@@ -73,8 +73,8 @@ class Ray {
    * @returns {Obstacle|null} The closest obstacle or null if none found
    */
   renderobstacle(obstacles) {
-    let p1 = this.pos;
-    let p2 = p5.Vector.add(this.pos, this.dir.mult(1000));
+    let p1 = this.pos.copy();
+    let p2 = p5.Vector.add(this.pos.copy(), p5.Vector.mult(this.dir.copy(), 1000));
     let ob = null;
     let dis = Infinity;
     
@@ -106,8 +106,8 @@ class Ray {
     // Ray endpoints
     const x3 = this.pos.x;
     const y3 = this.pos.y;
-    const x4 = this.pos.x + this.dir.x;
-    const y4 = this.pos.y + this.dir.y;
+    const x4 = this.pos.x + this.dir.x * SIGHT;  // Use SIGHT distance for ray length
+    const y4 = this.pos.y + this.dir.y * SIGHT;
 
     // Calculate denominator for line intersection
     const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
@@ -120,7 +120,7 @@ class Ray {
     const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
     
     // Check if intersection is within both line segments
-    if (t > 0 && t < 1 && u > 0) {
+    if (t > 0 && t < 1 && u > 0 && u < 1) {  // Added u < 1 condition for ray length
       const pt = createVector();
       pt.x = x1 + t * (x2 - x1);
       pt.y = y1 + t * (y2 - y1);
