@@ -1,20 +1,41 @@
+/**
+ * Ray class for sensor rays used in obstacle detection
+ * Rays are cast from the particle's position in a specific direction
+ */
 class Ray {
+  /**
+   * Constructor for the Ray class
+   * @param {p5.Vector} pos - The starting position of the ray
+   * @param {number} angle - The angle of the ray in radians
+   */
   constructor(pos, angle) {
     this.pos = pos;
     this.angle = angle;
     this.dir = p5.Vector.fromAngle(angle);
   }
 
+  /**
+   * Point the ray at a specific target
+   * @param {number} x - Target x coordinate
+   * @param {number} y - Target y coordinate
+   */
   lookAt(x, y) {
     this.dir.x = x - this.pos.x;
     this.dir.y = y - this.pos.y;
     this.dir.normalize();
   }
 
+  /**
+   * Rotate the ray by an offset angle
+   * @param {number} offset - Angle offset in radians
+   */
   rotate(offset) {
     this.dir = p5.Vector.fromAngle(this.angle + offset);
   }
 
+  /**
+   * Display the ray on the canvas
+   */
   show() {
     stroke(0, 255, 0, 100);
     push();
@@ -23,56 +44,82 @@ class Ray {
     pop();
   }
 
-  checkobstacle(obstacles){
-  	let p1 = this.pos;  	
-  	let p2 = p5.Vector.add(this.pos,this.dir.mult(SIGHT));
-  	let ob = null;
-  	let dis = Infinity;
-  	for (let obstacle of obstacles) {
-  		if(collidePointLine(obstacle.pos.x,obstacle.pos.y,p1.x,p1.y,p2.x,p2.y,1)){
-  			if(dis > p5.Vector.dist(this.pos,obstacle.pos)){
-  				dis = p5.Vector.dist(this.pos,obstacle.pos);
-  				ob = obstacle;
-  			}
-  		}	
-  	}
-  	return ob;
+  /**
+   * Check for collisions with obstacles
+   * @param {Obstacle[]} obstacles - Array of obstacles to check
+   * @returns {Obstacle|null} The closest obstacle or null if none found
+   */
+  checkobstacle(obstacles) {
+    let p1 = this.pos;
+    let p2 = p5.Vector.add(this.pos, this.dir.mult(SIGHT));
+    let ob = null;
+    let dis = Infinity;
+    
+    for (let obstacle of obstacles) {
+      if (collidePointLine(obstacle.pos.x, obstacle.pos.y, p1.x, p1.y, p2.x, p2.y, 1)) {
+        if (dis > p5.Vector.dist(this.pos, obstacle.pos)) {
+          dis = p5.Vector.dist(this.pos, obstacle.pos);
+          ob = obstacle;
+        }
+      }
+    }
+    
+    return ob;
   }
 
-  renderobstacle(obstacles){
-  	let p1 = this.pos;  	
-  	let p2 = p5.Vector.add(this.pos,this.dir.mult(1000));
-  	let ob = null;
-  	let dis = Infinity;
-  	for (let obstacle of obstacles) {
-  		if(collidePointLine(obstacle.pos.x,obstacle.pos.y,p1.x,p1.y,p2.x,p2.y,.07)){
-  			if(dis > p5.Vector.dist(this.pos,obstacle.pos)){
-  				dis = p5.Vector.dist(this.pos,obstacle.pos);
-  				ob = obstacle;
-  			}
-  		}	
-  	}
-  	return ob;
+  /**
+   * Render obstacle detection for visualization
+   * @param {Obstacle[]} obstacles - Array of obstacles to check
+   * @returns {Obstacle|null} The closest obstacle or null if none found
+   */
+  renderobstacle(obstacles) {
+    let p1 = this.pos;
+    let p2 = p5.Vector.add(this.pos, this.dir.mult(1000));
+    let ob = null;
+    let dis = Infinity;
+    
+    for (let obstacle of obstacles) {
+      if (collidePointLine(obstacle.pos.x, obstacle.pos.y, p1.x, p1.y, p2.x, p2.y, 0.07)) {
+        if (dis > p5.Vector.dist(this.pos, obstacle.pos)) {
+          dis = p5.Vector.dist(this.pos, obstacle.pos);
+          ob = obstacle;
+        }
+      }
+    }
+    
+    return ob;
   }
 
+  /**
+   * Cast the ray and check for intersection with a wall
+   * Uses line-line intersection algorithm
+   * @param {Boundary} wall - The wall to check for intersection
+   * @returns {p5.Vector|undefined} The intersection point or undefined if no intersection
+   */
   cast(wall) {
+    // Wall endpoints
     const x1 = wall.a.x;
     const y1 = wall.a.y;
     const x2 = wall.b.x;
     const y2 = wall.b.y;
 
+    // Ray endpoints
     const x3 = this.pos.x;
     const y3 = this.pos.y;
     const x4 = this.pos.x + this.dir.x;
     const y4 = this.pos.y + this.dir.y;
 
+    // Calculate denominator for line intersection
     const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (den == 0) {
+    if (den === 0) {
       return;
     }
 
+    // Calculate intersection point
     const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
     const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den;
+    
+    // Check if intersection is within both line segments
     if (t > 0 && t < 1 && u > 0) {
       const pt = createVector();
       pt.x = x1 + t * (x2 - x1);

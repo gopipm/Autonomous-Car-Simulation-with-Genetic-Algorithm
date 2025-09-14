@@ -106,6 +106,23 @@ Cars have 13 sensors (rays) spread across a 130-degree field of view to detect:
 - Distance to track boundaries
 - Distance to dynamic obstacles
 
+## Code Improvements
+
+The code has been refactored to improve:
+- **Modularity**: Each functionality is separated into its own class or function
+- **Readability**: Added comprehensive comments and consistent formatting
+- **Documentation**: Detailed JSDoc comments for all functions and classes
+- **Maintainability**: Improved code organization and structure
+
+### Refactored Files
+
+1. **nn.js**: Neural network implementation with detailed documentation
+2. **ga.js**: Genetic algorithm functions with clear explanations
+3. **particle.js**: Particle (car) class with comprehensive sensor and control logic
+4. **ray.js**: Ray casting for obstacle detection with improved comments
+5. **boundary.js**: Track boundary and obstacle classes with better structure
+6. **sketch.js**: Main simulation logic with organized setup and draw functions
+
 ## TODO / Improvements
 
 ### Performance & Training

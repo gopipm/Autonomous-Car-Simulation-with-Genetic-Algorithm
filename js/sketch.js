@@ -1,50 +1,65 @@
+/**
+ * Autonomous Car Simulation with Genetic Algorithm
+ * 
+ * This simulation uses neural networks and a genetic algorithm to evolve
+ * cars that can navigate a procedurally generated track while avoiding
+ * static and dynamic obstacles.
+ */
 
-const TOTAL = 100;
-const MUTATION_RATE = 0.2;
-const LIFESPAN = 30;
-const SIGHT = 80;
+// Configuration constants
+const TOTAL = 100;          // Number of cars in each generation
+const MUTATION_RATE = 0.2;  // Probability of mutation for each weight
+const LIFESPAN = 30;        // Maximum frames a car can live without progress
+const SIGHT = 80;           // Sensor range in pixels
 
-let toggle_value = false;
-let obstacleNo = 20;
+// Global variables
+let toggle_value = false;   // Toggle for dynamic/static obstacles
+let obstacleNo = 20;        // Number of obstacles
 
-let generationCount = 0;
-let bestP;
+let generationCount = 0;    // Current generation number
+let bestP;                  // Best performing particle
 
-let walls = [];
-let ray;
+let walls = [];             // Track boundary walls
+let ray;                    // Sensor ray (unused?)
 
-let cp_points = [];
+let cp_points = [];         // Checkpoint points for obstacle movement
 
-let trained_model;
+let trained_model;          // Loaded trained model
 
-let agents = [];
-let savedagents = [];
+let agents = [];            // Current generation of cars
+let savedagents = [];       // Previous generation (for genetic algorithm)
 
-let start, end;
+let start, end;             // Start and end points of the track
 
-let speedSlider;
+let speedSlider;            // Slider to control simulation speed
 
-let inside = [];
-let outside = [];
-let checkpoints = [];
+let inside = [];            // Inner track boundary points
+let outside = [];           // Outer track boundary points
+let checkpoints = [];       // Track checkpoints
 
+const maxFitness = 500;     // Fitness threshold to trigger new generation
+let changeMap = false;      // Flag to trigger track regeneration
 
-const maxFitness = 500;
-let changeMap = false;
+let trackheight = 800;      // Track height
+let trackWidth = 1000;      // Track width
 
-let trackheight = 800;
-let trackWidth = 1000;
-
+/**
+ * Build a procedurally generated track with inner and outer boundaries
+ */
 function buildTrack() {
+  // Reset track data
   checkpoints = [];
   inside = [];
   outside = [];
-  min_dist = Infinity;
+  let min_dist = Infinity;
   let noiseMax = 2;
+  
+  // Generate track points using Perlin noise
   const total = 80;
   const pathWidth = 70;
   let startX = random(10);
   let startY = random(10);
+  
   for (let i = 0; i < total; i++) {
     let a = map(i, 0, total, 0, TWO_PI);
     let xoff = map(cos(a), -1, 1, 0, noiseMax) + startX;
@@ -55,115 +70,152 @@ function buildTrack() {
     let y1 = trackheight / 2 + (yr - pathWidth) * sin(a);
     let x2 = trackWidth / 2 + (xr + pathWidth) * cos(a);
     let y2 = trackheight / 2 + (yr + pathWidth) * sin(a);
+    
     checkpoints.push(new Boundary(x1, y1, x2, y2));
     inside.push(createVector(x1, y1));
     outside.push(createVector(x2, y2));
   }
 
+  // Create walls from consecutive checkpoint points
   walls = [];
   for (let i = 0; i < checkpoints.length; i++) {
     let a1 = inside[i];
     let b1 = inside[(i + 1) % checkpoints.length];
     walls.push(new Boundary(a1.x, a1.y, b1.x, b1.y));
+    
     let a2 = outside[i];
     let b2 = outside[(i + 1) % checkpoints.length];
     walls.push(new Boundary(a2.x, a2.y, b2.x, b2.y));
   }
 
-  obstacles=[];
-  cp_points=[];
-  for (var i = 0; i <obstacleNo; i++) {
-  	let index = int(random(5,checkpoints.length-1));
-  	let p1 = inside[index];  	
-  	let p2 = outside[index];
-  	let mid = checkpoints[index].midpoint(); 
-  	let x = random(p1.x,p2.x);
-  	let m = (p2.y-p1.y)/(p2.x-p1.x);
-  	let y = m*(x-p1.x)+p1.y;  	
-  	let ob = new Obstacle(x,y); 	
-  	// console.log(mid);
-  	let cp_data = {  		
-  		"p1":p1,
-  		"p2":p2
-  	}
-  	cp_points.push(cp_data);
-  	obstacles.push(ob);  	
-  }  
+  // Create dynamic obstacles
+  obstacles = [];
+  cp_points = [];
+  for (let i = 0; i < obstacleNo; i++) {
+    let index = int(random(5, checkpoints.length - 1));
+    let p1 = inside[index];
+    let p2 = outside[index];
+    let mid = checkpoints[index].midpoint();
+    let x = random(p1.x, p2.x);
+    let m = (p2.y - p1.y) / (p2.x - p1.x);
+    let y = m * (x - p1.x) + p1.y;
+    let ob = new Obstacle(x, y);
+    
+    let cp_data = {
+      "p1": p1,
+      "p2": p2
+    };
+    
+    cp_points.push(cp_data);
+    obstacles.push(ob);
+  }
+  
+  // Set start and end points
   start = checkpoints[0].midpoint();
   end = checkpoints[checkpoints.length - 1].midpoint();
 }
 
+/**
+ * Setup function - runs once at the beginning
+ */
 function setup() {
   createCanvas(1900, 800);
   tf.setBackend('cpu');
   buildTrack();
+  
+  // Create initial population of agents
   for (let i = 0; i < TOTAL; i++) {
     agents[i] = new Particle();
   }
 
-  speedSlider = createSlider(1, 10, 1);   
+  // Create speed control slider
+  speedSlider = createSlider(1, 10, 1);
 }
 
-
-function toggle_btn(){
-	toggle_value = ! toggle_value;
-	if(toggle_value){
-		document.getElementById("btn_toggle").innerHTML = "Static";
-	}else{
-		document.getElementById("btn_toggle").innerHTML = "Dynamic";
-	}
+/**
+ * Toggle button for dynamic/static obstacles
+ */
+function toggle_btn() {
+  toggle_value = !toggle_value;
+  if (toggle_value) {
+    document.getElementById("btn_toggle").innerHTML = "Static";
+  } else {
+    document.getElementById("btn_toggle").innerHTML = "Dynamic";
+  }
 }
+
+/**
+ * Load a trained model from user files
+ */
 async function load_model() {
-	const uploadJSONInput = document.getElementById('upload-json');
-	const uploadWeightsInput = document.getElementById('upload-weights');
-	trained_model = await tf.loadLayersModel(tf.io.browserFiles([uploadJSONInput.files[0], uploadWeightsInput.files[0]]));
-	console.log(trained_model);
+  const uploadJSONInput = document.getElementById('upload-json');
+  const uploadWeightsInput = document.getElementById('upload-weights');
+  trained_model = await tf.loadLayersModel(
+    tf.io.browserFiles([uploadJSONInput.files[0], uploadWeightsInput.files[0]])
+  );
+  console.log(trained_model);
 }
 
+/**
+ * Save the best performing model
+ */
 function save_model() {
-	bestP.save()
+  bestP.save();
 }
 
+/**
+ * Change the number of obstacles based on user input
+ */
 function change_obs_no() {
-	if(Number.isNaN(int(document.getElementById('obs_no').value))){
-		obstacleNo = 20;
-		console.log("nan");
-	}else{
-		obstacleNo = int(document.getElementById('obs_no').value);
-		console.log(obstacleNo);	
-	}
+  const inputValue = int(document.getElementById('obs_no').value);
+  if (Number.isNaN(inputValue)) {
+    obstacleNo = 20;
+    console.log("Invalid input, using default value of 20");
+  } else {
+    obstacleNo = inputValue;
+    console.log("Obstacle count set to: " + obstacleNo);
+  }
 }
 
+/**
+ * Main draw loop - runs continuously
+ */
 function draw() {
   const cycles = speedSlider.value();
   background(0);
 
   bestP = agents[0];
 
+  // Run simulation for multiple cycles per frame
   for (let n = 0; n < cycles; n++) {
+    // Update all agents
     for (let agent of agents) {
-      agent.look(walls,obstacles);
+      agent.look(walls, obstacles);
       agent.check(checkpoints);
       agent.bounds();
       agent.update();
       agent.show();
 
+      // Track best performing agent
       if (agent.fitness > bestP.fitness) {
         bestP = agent;
       }
     }
 
+    // Remove dead or finished agents
     for (let i = agents.length - 1; i >= 0; i--) {
       const agent = agents[i];
       if (agent.dead || agent.finished) {
         savedagents.push(agents.splice(i, 1)[0]);
       }
 
+      // Trigger new generation if fitness threshold is reached
       if (!changeMap && agent.fitness > maxFitness) {
         changeMap = true;
       }
     }
 
+    // Generate new track and population if needed
     if (agents.length !== 0 && changeMap) {
       for (let i = agents.length - 1; i >= 0; i--) {
         savedagents.push(agents.splice(i, 1)[0]);
@@ -175,13 +227,15 @@ function draw() {
       changeMap = false;
     }
 
-    if (agents.length == 0) {
+    // Generate new population if all agents are dead
+    if (agents.length === 0) {
       buildTrack();
       nextGeneration();
       generationCount++;
     }
   }
 
+  // Display track elements
   for (let cp of checkpoints) {
     // strokeWeight(2);
     // cp.show();  
@@ -195,52 +249,53 @@ function draw() {
     agent.show();
   }
 
-  for (var i = 0; i < obstacles.length; i++) {
-  	if(toggle_value){
-    	obstacles[i].show(cp_points[i]);
-    }else{
-    	obstacles[i].show(0);
+  // Display obstacles
+  for (let i = 0; i < obstacles.length; i++) {
+    if (toggle_value) {
+      obstacles[i].show(cp_points[i]);
+    } else {
+      obstacles[i].show(0);
     }
   }
 
-  // for (let obstacle of obstacles) {
-  //   if(toggle_value){
-  //   	obstacle.show(min_dist);
-  //   }else{
-  //   	obstacle.show(0);
-  //   }
-  // }
-
+  // Highlight best agent
   bestP.highlight();
 
-  let data = bestP.renderView(walls,obstacles);
+  // Render 3D-like view from best agent's perspective
+  let data = bestP.renderView(walls, obstacles);
   let scene = data['scene'];
   let colors = data['colors'];
   const w = 900 / scene.length;
+  
   push();
-  translate(1000,0);
-  for (var i = 0; i < scene.length; i++) {
-  	noStroke();
-  	let sq = scene[i]*scene[i];	
-  	let swq = 400*400;
-  	const b = map(sq,0,swq,200,0);
-  	const h = map(sq,0,swq,800,0);
-  	if(colors[i]==1){
-  		fill(b,0,0);
-  	}
-  	if(colors[i]==0){
-  		fill(b,b,b+30,b);	
-  	}  	
-  	rectMode(CENTER);
-  	rect(i*w + w/2,400,w+1,h);
+  translate(1000, 0);
+  for (let i = 0; i < scene.length; i++) {
+    noStroke();
+    let sq = scene[i] * scene[i];
+    let swq = 400 * 400;
+    const b = map(sq, 0, swq, 200, 0);
+    const h = map(sq, 0, swq, 800, 0);
+    
+    if (colors[i] === 1) {
+      // Obstacle color (red)
+      fill(b, 0, 0);
+    }
+    if (colors[i] === 0) {
+      // Wall color (gray/blue)
+      fill(b, b, b + 30, b);
+    }
+    
+    rectMode(CENTER);
+    rect(i * w + w / 2, 400, w + 1, h);
   }
   pop();
 
+  // Display UI information
   fill(255);
-  line(trackWidth,0,trackWidth,trackheight);
+  line(trackWidth, 0, trackWidth, trackheight);
   textSize(24);
   noStroke();
   text('Generation: ' + generationCount, 10, 50);
-  text('Speed: '+ map(bestP.vel.mag().toFixed(6),0,5,0,180).toFixed(4)+ ' Km/h',10,700);
-  text('distance from obstacle: '+ bestP.closeDistFromOb.toFixed(3)+" m",10,750);
+  text('Speed: ' + map(bestP.vel.mag().toFixed(6), 0, 5, 0, 180).toFixed(4) + ' Km/h', 10, 700);
+  text('Distance from obstacle: ' + bestP.closeDistFromOb.toFixed(3) + " m", 10, 750);
 }
