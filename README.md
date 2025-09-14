@@ -12,25 +12,18 @@ The simulation features:
 - Real-time visualization of car sensors (LiDAR-like rays)
 - 3D-like visualization of the car's perspective
 
-## How It Works
-
-1. **Neural Network Control**: Each car has a neural network that takes sensor inputs and outputs steering decisions
-2. **Sensor System**: Cars use raycasting to detect distances to walls and obstacles
-3. **Genetic Algorithm**: 
-   - Cars that survive longer and make progress get higher fitness scores
-   - Best performers are selected for breeding the next generation
-   - Mutation introduces variation to prevent local optima
-4. **Training Process**: Over successive generations, cars become better at navigating the track
-
 ## Files Structure
 
 - `index.html` - Main HTML file
-- `sketch.js` - Main p5.js sketch with setup and draw functions
-- `particle.js` - Car/Agent class with neural network brain
-- `nn.js` - Neural network implementation using TensorFlow.js
-- `ga.js` - Genetic algorithm functions
-- `ray.js` - Raycasting for sensors
-- `boundary.js` - Track boundary and obstacle classes
+- `js/` - Directory containing all JavaScript files
+  - `nn.js` - Neural network implementation using TensorFlow.js
+  - `ga.js` - Genetic algorithm functions
+  - `particle.js` - Car/Agent class with neural network brain
+  - `ray.js` - Raycasting for sensors
+  - `boundary.js` - Track boundary and obstacle classes
+  - `sketch.js` - Main p5.js sketch with setup and draw functions
+  - `loadbinary.js` - Binary file loading utilities
+  - `p5.collide2d.js` - Collision detection library
 - `ml-data/` - Pre-trained models
 - `model.json` - Base model structure
 - `git-commands.sh` - Git helper script
