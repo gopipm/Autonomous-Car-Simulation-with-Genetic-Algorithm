@@ -13,6 +13,7 @@ The simulation features:
 - 3D-like visualization of the car's perspective
 - **New:** A dedicated "About" panel providing detailed information about the simulation, its features, and controls.
 - **New:** A clear information bar above the simulation canvas displaying real-time generation, speed, and distance from obstacles.
+- **New:** Comprehensive training analytics dashboard with real-time charts and performance metrics.
 
 ## Files Structure
 
@@ -52,6 +53,7 @@ The simulation features:
 - **Load Model**: Load a pre-trained model
 - **Settings**: Toggle visibility of the simulation settings panel.
 - **About**: Toggle visibility of the about information panel.
+- **Analytics**: Open the comprehensive training dashboard with real-time charts and performance metrics.
 - **Toggle Theme**: Switch between light and dark UI themes.
 
 ## Version Control
@@ -121,6 +123,34 @@ The code has been refactored to improve:
 - **Documentation**: Detailed JSDoc comments for all functions and classes
 - **Maintainability**: Improved code organization and structure
 
+## Training Analytics Dashboard
+
+The simulation now includes a comprehensive analytics dashboard that provides:
+
+### Real-time Charts
+- **Fitness Evolution**: Tracks best and average fitness scores across generations
+- **Lap Completion**: Monitors progress in track completion over time
+- **Population Survival**: Shows percentage of agents surviving each generation
+- **Speed Performance**: Displays average speed metrics throughout training
+
+### Performance Metrics
+- **Current Generation**: Live generation counter
+- **Best Fitness**: Highest fitness score achieved
+- **Best Laps**: Maximum laps completed by any agent
+- **Average Survival**: Population survival percentage
+- **Training Time**: Total time spent in training
+
+### Advanced Analytics
+- **Improvement Rate**: Measures fitness improvement over recent generations
+- **Convergence Score**: Indicates how close the population is to optimal performance
+- **Diversity Index**: Measures genetic diversity within the population
+- **Success Rate**: Percentage of agents completing at least one lap
+
+### Data Export
+- Export training data as JSON for analysis
+- Reset statistics and start fresh training sessions
+- Historical data tracking with configurable retention
+
 ### Refactored Files
 
 1. **nn.js**: Neural network implementation with detailed documentation
@@ -130,42 +160,18 @@ The code has been refactored to improve:
 5. **boundary.js**: Track boundary and obstacle classes with better structure
 6. **sketch.js**: Main simulation logic with organized setup and draw functions
 
-## TODO / Improvements
+7. **dashboard.js**: New comprehensive training analytics system with Chart.js integration
 
-### Performance & Training
-- [ ] Implement elitism to preserve top performers across generations
-- [ ] Add different track layouts for more robust training
-- [ ] Implement curriculum learning with increasing difficulty
-- [ ] Add checkpoint system to resume training from specific generations
-- [ ] Optimize neural network architecture for faster computation
+## Development Roadmap
 
-### Features & Functionality
-- [ ] Add multiple car types with different capabilities
-- [ ] Implement weather conditions (rain, fog) affecting sensors
-- [ ] Add different obstacle behaviors (moving in patterns, varying speeds)
-- [*] Create a dashboard to visualize training statistics
-- [ ] Add manual driving mode for collecting training data
+For detailed development tasks, feature requests, and implementation priorities, see [TODO.md](TODO.md).
 
-### UI/UX Improvements
-- [ ] Improve visualization of car sensors and decision-making process
-- [ ] Add replay functionality for best performing cars
-- [*] Implement a proper settings panel instead of scattered controls
-- [ ] Add graph visualization of fitness improvement over generations
-- [ ] Create a start screen with instructions and options
-
-### Code Quality
-- [ ] Refactor code into ES6 modules for better organization
-- [*] Add comprehensive comments and documentation
-- [ ] Implement unit tests for core functions
-- [ ] Optimize raycasting algorithm for better performance
-- [ ] Add error handling and validation for user inputs
-
-### Advanced Features
-- [ ] Implement reinforcement learning with reward shaping
-- [ ] Add convolutional neural network for visual input processing
-- [ ] Create a multi-agent environment with competitive cars
-- [ ] Add transfer learning capabilities between different tracks
-- [ ] Implement online learning where cars continue to learn during simulation
+The roadmap includes:
+- Performance optimizations and memory management
+- Enhanced track generation and curriculum learning
+- Advanced neural network features and training methods
+- Comprehensive testing and validation framework
+- UI/UX improvements and accessibility features
 
 ## Libraries Used
 
