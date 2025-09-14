@@ -106,6 +106,25 @@ Cars have 13 sensors (rays) spread across a 130-degree field of view to detect:
 - Distance to track boundaries
 - Distance to dynamic obstacles
 
+## Library Versions
+
+The project uses the following external libraries:
+
+### p5.js
+- **Version**: 2.0.5 (September 2025)
+- **Purpose**: Creative coding framework for graphics and interaction
+- **CDN**: https://cdn.jsdelivr.net/npm/p5@2.0.5/lib/p5.min.js
+
+### TensorFlow.js
+- **Version**: 4.22.0 (October 2025)
+- **Purpose**: Machine learning library for neural network implementation
+- **CDN**: https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js
+
+### p5.collide2d
+- **Version**: 0.7.3 (Latest)
+- **Purpose**: Collision detection for obstacles and track boundaries
+- **CDN**: https://cdn.jsdelivr.net/npm/p5.collide2d
+
 ## Code Improvements
 
 The code has been refactored to improve:
